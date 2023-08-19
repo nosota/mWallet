@@ -85,22 +85,4 @@ public class WalletService {
 
         transactionRepository.save(transaction);
     }
-
-    @Transactional
-    public void transferBetweenMultipleWallets(Map<Integer, Long> walletAmountMap) {
-        for (Map.Entry<Integer, Long> entry : walletAmountMap.entrySet()) {
-            Integer walletId = entry.getKey();
-            Long amount = entry.getValue();
-
-            if (amount > 0) {
-                credit(walletId, amount);
-            } else if (amount < 0) {
-                debit(walletId, Math.abs(amount));
-            }
-
-            // You can insert your daily threshold check logic here.
-            // If any of the checks fails, you can throw a runtime exception,
-            // and Spring's @Transactional will ensure all operations are rolled back.
-        }
-    }
 }
