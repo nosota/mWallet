@@ -4,11 +4,13 @@ import com.nosota.mwallet.model.WalletBalance;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 
-public interface WalletBalanceRepository extends JpaRepository<WalletBalance, Long> {
-    WalletBalance findTopByWalletIdOrderBySnapshotDateDesc(Long walletId);
+@Repository
+public interface WalletBalanceRepository extends JpaRepository<WalletBalance, Integer> {
+    WalletBalance findTopByWalletIdOrderBySnapshotDateDesc(Integer walletId);
 
     @Transactional
     Double findBalanceByWallet(Wallet wallet);
@@ -18,7 +20,7 @@ public interface WalletBalanceRepository extends JpaRepository<WalletBalance, Lo
         save(walletBalance);
     }
 
-    default void setBalance(WalletBalance walletBalance, Double balance) {
+    default void setBalance(WalletBalance walletBalance, Long balance) {
         walletBalance.setBalance(balance);
         save(walletBalance);
     }
@@ -29,5 +31,5 @@ public interface WalletBalanceRepository extends JpaRepository<WalletBalance, Lo
     }
 
     @Query("SELECT wb.balance FROM WalletBalance wb WHERE wb.id = ?1")
-    Double getBalance(Long walletBalanceId);
+    Double getBalance(Integer walletBalanceId);
 }

@@ -1,34 +1,80 @@
 package com.nosota.mwallet.model;
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
-
 import java.time.LocalDateTime;
 
 @Entity
 public class Transaction {
-
-    @jakarta.persistence.Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "wallet_id", nullable = false)
+    @JoinColumn(name = "wallet_id")
     private Wallet wallet;
 
-    private Double amount;
+    private Long amount;
 
-    private String type; // CREDIT or DEBIT
+    @Enumerated(EnumType.STRING)
+    private TransactionType type; // CREDIT or DEBIT
 
-    private LocalDateTime timestamp;
+    private LocalDateTime transactionDate;
 
-    public void setId(Long id) {
-        this.id = id;
+    private String description; // CREDIT or DEBIT
+
+
+    // Utility method to set only the walletId without fetching the Wallet entity
+    public void setWalletId(Integer walletId) {
+        if (wallet == null) {
+            wallet = new Wallet();
+        }
+        wallet.setId(walletId);
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    // getters, setters...
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Wallet getWallet() {
+        return wallet;
+    }
+
+    public void setWallet(Wallet wallet) {
+        this.wallet = wallet;
+    }
+
+    public Long getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Long amount) {
+        this.amount = amount;
+    }
+
+    public TransactionType getType() {
+        return type;
+    }
+
+    public void setType(TransactionType type) {
+        this.type = type;
+    }
+
+    public LocalDateTime getTransactionDate() {
+        return transactionDate;
+    }
+
+    public void setTransactionDate(LocalDateTime transactionDate) {
+        this.transactionDate = transactionDate;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }

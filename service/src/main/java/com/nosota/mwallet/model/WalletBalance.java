@@ -1,25 +1,29 @@
 package com.nosota.mwallet.model;
-
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
-
 import java.time.LocalDateTime;
 
 @Entity
 public class WalletBalance {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
 
-    private Double balance;
+    private Long balance;
 
     @Column(name = "snapshot_date")
     private LocalDateTime snapshotDate;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     // Setter for Wallet
     public void setWallet(Wallet wallet) {
@@ -27,11 +31,11 @@ public class WalletBalance {
     }
 
     // Setter for Balance
-    public void setBalance(Double balance) {
+    public void setBalance(Long balance) {
         this.balance = balance;
     }
 
-    public Double getBalance() {
+    public Long getBalance() {
         return this.balance;
     }
 
