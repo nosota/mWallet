@@ -25,7 +25,7 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType type; // CREDIT or DEBIT
 
-    @Column(name = "hold_timestamp", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "hold_timestamp")
     private LocalDateTime holdTimestamp;
 
     @Column(name = "confirm_reject_timestamp")

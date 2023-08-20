@@ -19,4 +19,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     List<Transaction> findByWalletIdAndStatus(Integer walletId, TransactionStatus status);
 
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.referenceId = :referenceId AND (t.status = :status1 OR t.status = :status2)")
-    Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status1") TransactionStatus status1, @Param("status2") TransactionStatus status2);}
+    Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status1") TransactionStatus status1, @Param("status2") TransactionStatus status2);
+
+    List<Transaction> findByReferenceId(UUID referenceId);
+}

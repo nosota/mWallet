@@ -3,14 +3,17 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.error.InsufficientFundsException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.error.WalletNotFoundException;
+import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
 import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
+import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -21,6 +24,9 @@ public class WalletTransactionService {
 
     @Autowired
     private TransactionGroupRepository transactionGroupRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
 
     @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public UUID transferBetweenTwoWallets(Integer senderId, Integer recipientId, Long amount) throws Exception {
@@ -108,5 +114,9 @@ public class WalletTransactionService {
         return transactionGroupRepository.findById(referenceId)
                 .map(TransactionGroup::getStatus)
                 .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+    }
+
+    public List<Transaction> getTransactionsByReferenceId(UUID referenceId) {
+        return transactionRepository.findByReferenceId(referenceId);
     }
 }

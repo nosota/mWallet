@@ -5,6 +5,8 @@ import jakarta.persistence.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 
 @Service
 public class WalletBalanceService {
@@ -13,20 +15,23 @@ public class WalletBalanceService {
 
     public Long getAvailableBalance(Integer walletId) {
         String sql = """
-            SELECT 
-                SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE 0 END) - 
-                SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE 0 END) 
+            SELECT
+                SUM(amount)
             FROM (
-                SELECT amount, type FROM transactions WHERE wallet_id = :walletId AND status = 'CONFIRMED'
+                SELECT amount FROM transaction WHERE wallet_id = :walletId AND status = 'CONFIRMED'
                 UNION ALL
-                SELECT amount, type FROM wallet_snapshots WHERE wallet_id = :walletId AND status = 'CONFIRMED'
+                SELECT amount FROM wallet_snapshot WHERE wallet_id = :walletId AND status = 'CONFIRMED'
             ) AS combined_data
         """;
 
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("walletId", walletId);
 
-        Long result = (Long) query.getSingleResult();
-        return result != null ? result : 0L;
+        BigDecimal result = (BigDecimal) query.getSingleResult();
+        if (result != null) {
+            return result.longValueExact();
+        } else {
+            return 0L;
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.nosota.mwallet.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,6 +10,12 @@ import java.util.UUID;
 @Table(name = "transaction_group")
 public class TransactionGroup {
     @Id
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(
+            name = "UUID",
+            strategy = "org.hibernate.id.UUIDGenerator"
+    )
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
     @Enumerated(EnumType.STRING)

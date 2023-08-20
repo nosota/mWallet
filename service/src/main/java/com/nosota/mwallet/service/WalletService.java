@@ -4,6 +4,7 @@ import com.nosota.mwallet.error.InsufficientFundsException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.error.WalletNotFoundException;
 import com.nosota.mwallet.model.*;
+import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
@@ -29,11 +30,6 @@ public class WalletService {
     @Autowired
     private WalletBalanceService walletBalanceService;
 
-    public Wallet createNewWallet(WalletType type) {
-        Wallet newWallet = new Wallet();
-        newWallet.setType(type);
-        return walletRepository.save(newWallet);
-    }
 
     @Transactional
     public Long getAvailableBalance(Integer walletId) {
@@ -66,7 +62,7 @@ public class WalletService {
         return savedTransaction.getId();
     }
 
-
+    @Transactional
     public Integer reserve(Integer walletId, Long amount, UUID referenceId) throws WalletNotFoundException {
         // Check if the wallet exists and if not, throw WalletNotFoundException
         Wallet senderWallet = walletRepository.findById(walletId)
