@@ -1,5 +1,7 @@
 package com.nosota.mwallet.model;
+
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -8,11 +10,14 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "wallet_id")
     private Wallet wallet;
 
     private Long amount;
+
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status;
 
     @Enumerated(EnumType.STRING)
     private TransactionType type; // CREDIT or DEBIT
@@ -60,6 +65,14 @@ public class Transaction {
 
     public void setType(TransactionType type) {
         this.type = type;
+    }
+
+    public TransactionStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TransactionStatus status) {
+        this.status = status;
     }
 
     public LocalDateTime getTransactionDate() {

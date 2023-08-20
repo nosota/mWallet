@@ -1,35 +1,83 @@
 package com.nosota.mwallet.repository;
+
+import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.model.WalletBalance;
-import jakarta.transaction.Transactional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Repository
-public interface WalletBalanceRepository extends JpaRepository<WalletBalance, Integer> {
-    WalletBalance findTopByWalletIdOrderBySnapshotDateDesc(Integer walletId);
+public class WalletBalanceRepository{
+    @Autowired
+    private EntityManager entityManager;
 
-    @Transactional
-    Double findBalanceByWallet(Wallet wallet);
+    @Autowired
+    private TransactionRepository transactionRepository;
 
-    default void setWallet(WalletBalance walletBalance, Wallet wallet) {
-        walletBalance.setWallet(wallet);
-        save(walletBalance);
+    public Long getConfirmedBalance(Wallet wallet) {
+        return getBalanceForStatus(wallet, TransactionStatus.CONFIRMED);
     }
 
-    default void setBalance(WalletBalance walletBalance, Long balance) {
-        walletBalance.setBalance(balance);
-        save(walletBalance);
+    public Long getHoldBalance(Wallet wallet) {
+        return getBalanceForStatus(wallet, TransactionStatus.HOLD);
     }
 
-    default void setSnapshotDate(WalletBalance walletBalance, LocalDateTime date) {
-        walletBalance.setSnapshotDate(date);
-        save(walletBalance);
+    public Long getRejectedBalance(Wallet wallet) {
+        return getBalanceForStatus(wallet, TransactionStatus.REJECTED);
     }
 
-    @Query("SELECT wb.balance FROM WalletBalance wb WHERE wb.id = ?1")
-    Double getBalance(Integer walletBalanceId);
+    public void save(WalletBalance walletBalance) {
+        if (walletBalance.getId() == null) {
+            // New entity
+            entityManager.persist(walletBalance);
+        } else {
+            // Existing entity
+            entityManager.merge(walletBalance);
+        }
+    }
+
+    // Available Balance =
+    //    Latest Snapshot Balance
+    //  + Confirmed Transactions
+    //  − Hold Transactions
+    //  + Rejected Transactions
+    public Long getAvailableBalance(Wallet wallet) {
+        // Fetch the latest snapshot
+        WalletBalance latestSnapshot = findLatestSnapshotByWallet(wallet);
+        Long snapshotBalance = latestSnapshot != null ? latestSnapshot.getBalance() : 0L;
+
+        // Get the sum of confirmed transactions after the snapshot date
+        LocalDateTime snapshotDate = latestSnapshot != null ? latestSnapshot.getSnapshotDate() : null;
+        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.CONFIRMED, snapshotDate);
+        Long postSnapshotHeldAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.HOLD, snapshotDate);
+        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.REJECTED, snapshotDate);
+
+        // Calculate the available balance
+        return snapshotBalance
+                + (postSnapshotConfirmedAmount != null ? postSnapshotConfirmedAmount : 0L)
+                - (postSnapshotHeldAmount != null ? postSnapshotHeldAmount : 0L)
+                + (postSnapshotRejectedAmount != null ? postSnapshotRejectedAmount : 0L);
+    }
+
+    public WalletBalance findLatestSnapshotByWallet(Wallet wallet) {
+        String query = "SELECT wb FROM WalletBalance wb WHERE wb.wallet = :wallet ORDER BY wb.snapshotDate DESC";
+        return entityManager.createQuery(query, WalletBalance.class)
+                .setParameter("wallet", wallet)
+                .setMaxResults(1)
+                .getSingleResult();
+    }
+
+    private Long getBalanceForStatus(Wallet wallet, TransactionStatus status) {
+        String query = "SELECT SUM(amount) FROM Transaction WHERE wallet = :wallet AND status = :status";
+        Long result = (Long) entityManager.createQuery(query)
+                .setParameter("wallet", wallet)
+                .setParameter("status", status)
+                .getSingleResult();
+
+        return Optional.ofNullable(result).orElse(0L);
+    }
 }

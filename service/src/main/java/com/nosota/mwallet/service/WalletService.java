@@ -1,22 +1,22 @@
 package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.model.Transaction;
+import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.Wallet;
-import com.nosota.mwallet.model.WalletBalance;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletBalanceRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class WalletService {
+    private static Logger LOG = LoggerFactory.getLogger(WalletService.class);
 
     @Autowired
     private WalletRepository walletRepository;
@@ -27,62 +27,68 @@ public class WalletService {
     @Autowired
     private WalletBalanceRepository walletBalanceRepository;
 
-    // ... credit and debit methods ...
-
-    public Long getCurrentBalance(Integer walletId) {
-        WalletBalance latestSnapshot = walletBalanceRepository.findTopByWalletIdOrderBySnapshotDateDesc(walletId);
-
-        Long recentTransactionsSum;
-        if (latestSnapshot != null) {
-            recentTransactionsSum = transactionRepository.sumByWalletIdAndTimestampAfter(walletId, latestSnapshot.getSnapshotDate());
-            return latestSnapshot.getBalance() + (recentTransactionsSum != null ? recentTransactionsSum : 0);
-        } else {
-            return transactionRepository.sumByWalletId(walletId);
-        }
+    @Transactional
+    public Long getAvailableBalance(Integer walletId) {
+        Wallet wallet = getWallet(walletId);
+        Long availableBalance = walletBalanceRepository.getAvailableBalance(wallet);
+        return availableBalance;
     }
 
-    @Scheduled(cron = "0 0 0 * * ?")  // This runs the method at midnight every day.
-    public void captureDailySnapshot() {
-        List<Wallet> allWallets = walletRepository.findAll();
-        for (Wallet wallet : allWallets) {
-            Long currentBalance = getCurrentBalance(wallet.getId());
-            WalletBalance snapshot = new WalletBalance();
-            snapshot.setWallet(wallet);
-            snapshot.setBalance(currentBalance);
-            snapshot.setSnapshotDate(LocalDateTime.now());
-            walletBalanceRepository.save(snapshot);
-        }
-    }
 
     @Transactional
-    public void credit(Integer walletId, Long amount) {
-        Wallet wallet = walletRepository.findById(walletId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));
-
-        Transaction transaction = new Transaction();
-        transaction.setWallet(wallet);
-        transaction.setAmount(amount);  // positive amount for credit
-        transaction.setTransactionDate(LocalDateTime.now());
-
-        transactionRepository.save(transaction);
-    }
-
-    @Transactional
-    public void debit(Integer walletId, Long amount) {
-        Wallet wallet = walletRepository.findById(walletId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));
-
-        // Make sure the wallet has enough balance before debiting
-        Double currentBalance = walletBalanceRepository.getBalance(wallet.getId());
-        if (currentBalance < amount) {
+    public Integer hold(Integer walletId, Long amount) {
+        Wallet wallet = getWallet(walletId);
+        Long availableBalance = walletBalanceRepository.getAvailableBalance(wallet);
+        if (availableBalance < amount) {
             throw new IllegalArgumentException("Insufficient balance");
         }
 
         Transaction transaction = new Transaction();
         transaction.setWallet(wallet);
-        transaction.setAmount(-amount);  // negative amount for debit
+        transaction.setAmount(-amount); // still a debit, but in HOLD status
         transaction.setTransactionDate(LocalDateTime.now());
+        transaction.setStatus(TransactionStatus.HOLD);
 
+        return transactionRepository.save(transaction).getId();  // Return the transaction ID for later reference
+    }
+
+    @Transactional
+    public void confirm(Integer transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid transaction ID"));
+
+        if (transaction.getStatus() != TransactionStatus.HOLD) {
+            throw new IllegalStateException("Transaction not in HOLD status");
+        }
+
+        transaction.setStatus(TransactionStatus.CONFIRMED);
         transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public void reject(Integer transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid transaction ID"));
+
+        if (transaction.getStatus() != TransactionStatus.HOLD) {
+            throw new IllegalStateException("Transaction not in HOLD status");
+        }
+
+        transaction.setStatus(TransactionStatus.REJECTED);
+        transactionRepository.save(transaction);
+
+        // Reverse the amount to the wallet
+        Transaction reversalTransaction = new Transaction();
+        reversalTransaction.setWallet(transaction.getWallet());
+        reversalTransaction.setAmount(-transaction.getAmount()); // Reverse the transaction amount
+        reversalTransaction.setTransactionDate(LocalDateTime.now());
+        reversalTransaction.setStatus(TransactionStatus.CONFIRMED); // This is a confirmed transaction
+
+        transactionRepository.save(reversalTransaction);
+    }
+
+    private Wallet getWallet(Integer walletId) {
+        return walletRepository.findById(walletId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));
     }
 }
