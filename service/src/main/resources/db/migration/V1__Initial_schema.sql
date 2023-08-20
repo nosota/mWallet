@@ -4,6 +4,7 @@ CREATE TABLE wallet
     type       VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX idx_wallet_type ON wallet (type);
 
 CREATE TABLE transaction
 (
@@ -11,9 +12,13 @@ CREATE TABLE transaction
     wallet_id        INTEGER REFERENCES wallet (id),
     amount           BIGINT NOT NULL,
     type             VARCHAR(32) NOT NULL,
+    status           VARCHAR(32) NOT NULL,
     transaction_date TIMESTAMPTZ DEFAULT NOW(),
     description      TEXT
 );
+CREATE INDEX idx_transaction_type ON transaction (type);
+CREATE INDEX idx_transaction_status ON transaction (status);
+
 
 CREATE TABLE wallet_balance
 (

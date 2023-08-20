@@ -13,8 +13,8 @@ import java.util.List;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
     List<Transaction> findByStatus(TransactionStatus status);
-    List<Transaction> findByWalletAndStatus(Wallet wallet, TransactionStatus status);
     List<Transaction> findByWalletIdAndStatus(Integer walletId, TransactionStatus status);
-    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.wallet = :wallet AND t.status = :status AND (t.transactionDate > :date OR :date IS NULL)")
-    Long findTotalAmountByWalletAndStatusAndDateAfter(Wallet wallet, TransactionStatus status, @Nullable LocalDateTime date);
+
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.walletId = :walletId AND t.status = :status AND (t.transactionDate > :date OR :date IS NULL)")
+    Long findTotalAmountByWalletAndStatusAndDateAfter(Integer walletId, TransactionStatus status, @Nullable LocalDateTime date);
 }

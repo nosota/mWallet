@@ -31,8 +31,8 @@ public class WalletSnapshotService {
 
         // Calculate sum of confirmed transactions after the last snapshot
         LocalDateTime lastSnapshotDate = (lastSnapshot != null) ? lastSnapshot.getSnapshotDate() : null;
-        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.CONFIRMED, lastSnapshotDate);
-        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.REJECTED, lastSnapshotDate);
+        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.CONFIRMED, lastSnapshotDate);
+        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.REJECTED, lastSnapshotDate);
 
         // Calculate new snapshot balance
         Long newSnapshotBalance = lastSnapshotBalance

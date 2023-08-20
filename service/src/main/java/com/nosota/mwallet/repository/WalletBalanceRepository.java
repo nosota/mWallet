@@ -5,15 +5,21 @@ import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.model.WalletBalance;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
-public class WalletBalanceRepository{
+public class WalletBalanceRepository {
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private TransactionRepository transactionRepository;
@@ -40,6 +46,22 @@ public class WalletBalanceRepository{
         }
     }
 
+    public void saveAll(List<WalletBalance> balances) {
+        String sql = "INSERT INTO wallet_balance (wallet_id, balance, snapshot_date) VALUES (?, ?, ?)";
+
+        List<Object[]> batchArgs = new ArrayList<>();
+        for (WalletBalance balance : balances) {
+            Object[] walletBalanceData = {
+                    balance.getWallet().getId(),
+                    balance.getBalance(),
+                    balance.getSnapshotDate()
+            };
+            batchArgs.add(walletBalanceData);
+        }
+
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+    }
+
     // Available Balance =
     //    Latest Snapshot Balance
     //  + Confirmed Transactions
@@ -52,9 +74,9 @@ public class WalletBalanceRepository{
 
         // Get the sum of confirmed transactions after the snapshot date
         LocalDateTime snapshotDate = latestSnapshot != null ? latestSnapshot.getSnapshotDate() : null;
-        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.CONFIRMED, snapshotDate);
-        Long postSnapshotHeldAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.HOLD, snapshotDate);
-        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet, TransactionStatus.REJECTED, snapshotDate);
+        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.CONFIRMED, snapshotDate);
+        Long postSnapshotHeldAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.HOLD, snapshotDate);
+        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.REJECTED, snapshotDate);
 
         // Calculate the available balance
         return snapshotBalance

@@ -10,9 +10,12 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "wallet_id")
-    private Wallet wallet;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "wallet_id")
+//    private Wallet wallet;
+
+    @Column(name = "wallet_id")
+    private Integer walletId;
 
     private Long amount;
 
@@ -28,11 +31,20 @@ public class Transaction {
 
 
     // Utility method to set only the walletId without fetching the Wallet entity
+//    public void setWalletId(Integer walletId) {
+//        if (wallet == null) {
+//            wallet = new Wallet();
+//        }
+//        wallet.setId(walletId);
+//    }
+
+
+    public Integer getWalletId() {
+        return walletId;
+    }
+
     public void setWalletId(Integer walletId) {
-        if (wallet == null) {
-            wallet = new Wallet();
-        }
-        wallet.setId(walletId);
+        this.walletId = walletId;
     }
 
     public Integer getId() {
@@ -43,13 +55,13 @@ public class Transaction {
         this.id = id;
     }
 
-    public Wallet getWallet() {
-        return wallet;
-    }
-
-    public void setWallet(Wallet wallet) {
-        this.wallet = wallet;
-    }
+//    public Wallet getWallet() {
+//        return wallet;
+//    }
+//
+//    public void setWallet(Wallet wallet) {
+//        this.wallet = wallet;
+//    }
 
     public Long getAmount() {
         return amount;

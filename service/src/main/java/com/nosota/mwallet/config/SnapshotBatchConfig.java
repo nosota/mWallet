@@ -2,6 +2,7 @@ package com.nosota.mwallet.config;
 
 import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.model.WalletBalance;
+import com.nosota.mwallet.repository.WalletBalanceRepository;
 import com.nosota.mwallet.service.WalletSnapshotService;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.batch.core.Job;
@@ -9,6 +10,10 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
@@ -17,12 +22,17 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 
 import javax.sql.DataSource;
 
-@Configuration
-@EnableBatchProcessing
+//@Configuration
+//@EnableBatchProcessing
 public class SnapshotBatchConfig {
+
+    @Autowired
+    private JobRepository jobRepository;
 
     @Autowired
     public JobBuilderFactory jobBuilderFactory;
@@ -45,6 +55,7 @@ public class SnapshotBatchConfig {
                 .start(captureSnapshotStep())
                 .build();
     }
+
 
     @Bean
     public Step captureSnapshotStep() {

@@ -40,8 +40,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.batch</groupId>
-            <artifactId>spring-batch-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch</artifactId>
         </dependency>
 
         <!-- Flyway Core -->
