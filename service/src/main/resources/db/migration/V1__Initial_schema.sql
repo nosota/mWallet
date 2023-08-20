@@ -32,3 +32,6 @@ CREATE TABLE wallet_snapshot
     snapshot_date            TIMESTAMP   NOT NULL,
     CONSTRAINT fk_wallet FOREIGN KEY (wallet_id) REFERENCES wallet (id)
 );
+CREATE INDEX idx_wallet_snapshot_type ON wallet_snapshot (type);
+CREATE INDEX idx_wallet_snapshot_status ON wallet_snapshot (status);
+CREATE INDEX idx_wallet_snapshot_date ON wallet_snapshot (snapshot_date);

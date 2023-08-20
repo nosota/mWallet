@@ -5,6 +5,7 @@ CREATE TABLE transaction_group
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP
 );
+CREATE INDEX idx_transaction_group_status ON transaction_group (status);
 
 ALTER TABLE transaction
     ADD COLUMN reference_id UUID,
