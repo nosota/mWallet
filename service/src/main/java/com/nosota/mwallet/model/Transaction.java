@@ -10,10 +10,6 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "wallet_id")
-//    private Wallet wallet;
-
     @Column(name = "wallet_id")
     private Integer walletId;
 
@@ -25,18 +21,13 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType type; // CREDIT or DEBIT
 
-    private LocalDateTime transactionDate;
+    @Column(name = "hold_timestamp", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime holdTimestamp;
+
+    @Column(name = "confirm_reject_timestamp")
+    private LocalDateTime confirmRejectTimestamp;
 
     private String description; // CREDIT or DEBIT
-
-
-    // Utility method to set only the walletId without fetching the Wallet entity
-//    public void setWalletId(Integer walletId) {
-//        if (wallet == null) {
-//            wallet = new Wallet();
-//        }
-//        wallet.setId(walletId);
-//    }
 
 
     public Integer getWalletId() {
@@ -79,12 +70,21 @@ public class Transaction {
         this.status = status;
     }
 
-    public LocalDateTime getTransactionDate() {
-        return transactionDate;
+
+    public LocalDateTime getHoldTimestamp() {
+        return holdTimestamp;
     }
 
-    public void setTransactionDate(LocalDateTime transactionDate) {
-        this.transactionDate = transactionDate;
+    public void setHoldTimestamp(LocalDateTime holdTimestamp) {
+        this.holdTimestamp = holdTimestamp;
+    }
+
+    public LocalDateTime getConfirmRejectTimestamp() {
+        return confirmRejectTimestamp;
+    }
+
+    public void setConfirmRejectTimestamp(LocalDateTime confirmRejectTimestamp) {
+        this.confirmRejectTimestamp = confirmRejectTimestamp;
     }
 
     public String getDescription() {

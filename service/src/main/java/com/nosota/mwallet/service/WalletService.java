@@ -46,7 +46,7 @@ public class WalletService {
         Transaction transaction = new Transaction();
         transaction.setWalletId(wallet.getId());
         transaction.setAmount(-amount); // still a debit, but in HOLD status
-        transaction.setTransactionDate(LocalDateTime.now());
+        transaction.setHoldTimestamp(LocalDateTime.now());
         transaction.setStatus(TransactionStatus.HOLD);
 
         return transactionRepository.save(transaction).getId();  // Return the transaction ID for later reference
@@ -61,6 +61,7 @@ public class WalletService {
             throw new IllegalStateException("Transaction not in HOLD status");
         }
 
+        transaction.setConfirmRejectTimestamp(LocalDateTime.now());
         transaction.setStatus(TransactionStatus.CONFIRMED);
         transactionRepository.save(transaction);
     }
@@ -81,7 +82,7 @@ public class WalletService {
         Transaction reversalTransaction = new Transaction();
         reversalTransaction.setWalletId(transaction.getWalletId());
         reversalTransaction.setAmount(-transaction.getAmount()); // Reverse the transaction amount
-        reversalTransaction.setTransactionDate(LocalDateTime.now());
+        transaction.setConfirmRejectTimestamp(LocalDateTime.now());
         reversalTransaction.setStatus(TransactionStatus.CONFIRMED); // This is a confirmed transaction
 
         transactionRepository.save(reversalTransaction);

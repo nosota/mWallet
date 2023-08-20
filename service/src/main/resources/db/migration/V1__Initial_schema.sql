@@ -13,12 +13,12 @@ CREATE TABLE transaction
     amount           BIGINT NOT NULL,
     type             VARCHAR(32) NOT NULL,
     status           VARCHAR(32) NOT NULL,
-    transaction_date TIMESTAMPTZ DEFAULT NOW(),
+    hold_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    confirm_reject_timestamp TIMESTAMP,
     description      TEXT
 );
 CREATE INDEX idx_transaction_type ON transaction (type);
 CREATE INDEX idx_transaction_status ON transaction (status);
-
 
 CREATE TABLE wallet_balance
 (
