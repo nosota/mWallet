@@ -20,7 +20,7 @@ CREATE TABLE transaction
 CREATE INDEX idx_transaction_type ON transaction (type);
 CREATE INDEX idx_transaction_status ON transaction (status);
 
-CREATE TABLE wallet_snapshot
+CREATE TABLE transaction_snapshot
 (
     id                       SERIAL PRIMARY KEY,
     wallet_id                INTEGER     NOT NULL REFERENCES wallet (id),
@@ -32,6 +32,6 @@ CREATE TABLE wallet_snapshot
     snapshot_date            TIMESTAMP   NOT NULL,
     CONSTRAINT fk_wallet FOREIGN KEY (wallet_id) REFERENCES wallet (id)
 );
-CREATE INDEX idx_wallet_snapshot_type ON wallet_snapshot (type);
-CREATE INDEX idx_wallet_snapshot_status ON wallet_snapshot (status);
-CREATE INDEX idx_wallet_snapshot_date ON wallet_snapshot (snapshot_date);
+CREATE INDEX idx_transaction_snapshot_type ON transaction_snapshot (type);
+CREATE INDEX idx_transaction_snapshot_status ON transaction_snapshot (status);
+CREATE INDEX idx_transaction_snapshot_date ON transaction_snapshot (snapshot_date);

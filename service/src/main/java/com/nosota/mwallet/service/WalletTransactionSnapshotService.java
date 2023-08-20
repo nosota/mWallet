@@ -2,13 +2,13 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.WalletSnapshot;
+import com.nosota.mwallet.model.TransactionSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;
-import com.nosota.mwallet.repository.WalletSnapshotRepository;
+import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -17,13 +17,13 @@ import java.util.stream.Collectors;
 
 
 @Service
-public class WalletSnapshotService {
+public class WalletTransactionSnapshotService {
 
     @Autowired
     private TransactionRepository transactionRepository;
 
     @Autowired
-    private WalletSnapshotRepository walletSnapshotRepository;
+    private TransactionSnapshotRepository transactionSnapshotRepository;
 
     @Transactional
     public void captureDailySnapshot() {
@@ -40,8 +40,8 @@ public class WalletSnapshotService {
         List<Transaction> allRelatedTransactions = transactionRepository.findAllByReferenceIdIn(referenceIdList);
 
         // 4. Convert these transactions to wallet snapshots
-        List<WalletSnapshot> snapshots = allRelatedTransactions.stream()
-                .map(transaction -> new WalletSnapshot(
+        List<TransactionSnapshot> snapshots = allRelatedTransactions.stream()
+                .map(transaction -> new TransactionSnapshot(
                         transaction.getWalletId(),
                         transaction.getAmount(),
                         transaction.getType(),
@@ -52,7 +52,7 @@ public class WalletSnapshotService {
                 .collect(Collectors.toList());
 
         // 5. Save the snapshots
-        walletSnapshotRepository.saveAll(snapshots);
+        transactionSnapshotRepository.saveAll(snapshots);
 
         // 6. Delete the transactions from the transactions table
         transactionRepository.deleteAll(allRelatedTransactions);

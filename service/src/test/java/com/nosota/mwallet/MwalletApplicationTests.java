@@ -3,7 +3,6 @@ import static org.assertj.core.api.Assertions.*;
 import java.text.MessageFormat;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroupStatus;
-import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
 import org.junit.jupiter.api.Test;
@@ -26,7 +25,7 @@ class MwalletApplicationTests {
     private WalletTransactionService walletTransactionService;
 
     @Autowired
-    private WalletSnapshotService walletSnapshotService;
+    private WalletTransactionSnapshotService walletTransactionSnapshotService;
 
     @Test
     void contextLoads() {
@@ -107,7 +106,7 @@ class MwalletApplicationTests {
             System.out.println(formatted);
         });
 
-        walletSnapshotService.captureDailySnapshot();
+        walletTransactionSnapshotService.captureDailySnapshot();
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         balance2 = walletBalanceService.getAvailableBalance(wallet2Id);

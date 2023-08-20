@@ -20,7 +20,7 @@ public class WalletBalanceService {
             FROM (
                 SELECT amount FROM transaction WHERE wallet_id = :walletId AND status = 'CONFIRMED'
                 UNION ALL
-                SELECT amount FROM wallet_snapshot WHERE wallet_id = :walletId AND status = 'CONFIRMED'
+                SELECT amount FROM transaction_snapshot WHERE wallet_id = :walletId AND status = 'CONFIRMED'
             ) AS combined_data
         """;
 

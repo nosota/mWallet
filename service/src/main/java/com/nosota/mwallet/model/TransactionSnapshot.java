@@ -5,8 +5,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wallet_snapshot")
-public class WalletSnapshot {
+@Table(name = "transaction_snapshot")
+public class TransactionSnapshot {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,9 +35,12 @@ public class WalletSnapshot {
     @Column(name = "snapshot_date", nullable = false)
     private LocalDateTime snapshotDate;
 
-    public WalletSnapshot(Integer walletId, Long amount, TransactionType type,
-                          TransactionStatus status, LocalDateTime holdTimestamp,
-                          LocalDateTime confirmRejectTimestamp) {
+    public TransactionSnapshot() {
+    }
+
+    public TransactionSnapshot(Integer walletId, Long amount, TransactionType type,
+                               TransactionStatus status, LocalDateTime holdTimestamp,
+                               LocalDateTime confirmRejectTimestamp) {
         this.walletId = walletId;
         this.amount = amount;
         this.type = type;
