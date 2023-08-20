@@ -3,12 +3,16 @@ package com.nosota.mwallet.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(name = "reference_id", nullable = true)
+    private UUID referenceId;
 
     @Column(name = "wallet_id")
     private Integer walletId;
@@ -29,6 +33,21 @@ public class Transaction {
 
     private String description;
 
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public UUID getReferenceId() {
+        return referenceId;
+    }
+
+    public void setReferenceId(UUID referenceId) {
+        this.referenceId = referenceId;
+    }
 
     public Integer getWalletId() {
         return walletId;
@@ -36,14 +55,6 @@ public class Transaction {
 
     public void setWalletId(Integer walletId) {
         this.walletId = walletId;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
     }
 
     public Long getAmount() {
