@@ -18,7 +18,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-class MwalletApplicationTests {
+class BasicTests {
 
     @Autowired
     private WalletManagementService walletManagementService;
@@ -129,14 +129,4 @@ class MwalletApplicationTests {
             System.out.println(formatted);
         });
     }
-
-//    @Test
-//    void investigation () {
-//        walletSnapshotService.captureDailySnapshot();
-//        Long balance1 = walletBalanceService.getAvailableBalance(1);
-//        Long balance2 = walletBalanceService.getAvailableBalance(2);
-//
-//        assertThat(balance1).isEqualTo(0L);
-//        assertThat(balance2).isEqualTo(10L);
-//    }
 }

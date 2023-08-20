@@ -1,0 +1,115 @@
+package com.nosota.mwallet;
+import com.nosota.mwallet.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.model.WalletType;
+import com.nosota.mwallet.service.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class TransactionSnapshotTest {
+
+    @Autowired
+    private TransactionService transactionService;
+
+    @Autowired
+    private TransactionSnapshotService transactionSnapshotService;
+
+    @Autowired
+    private WalletService walletService;
+
+    @Autowired
+    private WalletBalanceService walletBalanceService;
+
+    @Autowired
+    private WalletManagementService walletManagementService;
+
+    @Autowired
+    private TransactionHistoryService transactionHistoryService;
+
+    private Integer wallet1Id;
+    private Integer wallet2Id;
+
+    private static Long INITIAL_BALANCE = 5000L;
+
+    @BeforeAll
+    public void setup() throws Exception {
+        // Create initial wallets
+        wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, INITIAL_BALANCE);
+        wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, INITIAL_BALANCE);
+
+        transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 100L);
+        transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 100L);
+
+        transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 200L);
+        transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 200L);
+
+        transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 300L);
+        transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 300L);
+
+        transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 400L);
+        transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 400L);
+
+        transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 500L);
+        transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 500L);
+    }
+
+    @Test
+    public void testCaptureDailySnapshotForWallet() {
+        // Record initial balances and transaction histories
+        Long initialWallet1Balance = walletBalanceService.getAvailableBalance(wallet1Id);
+        Long initialWallet2Balance = walletBalanceService.getAvailableBalance(wallet2Id);
+        assertEquals(initialWallet1Balance, INITIAL_BALANCE);
+        assertEquals(initialWallet2Balance, INITIAL_BALANCE);
+
+        List<TransactionHistoryDTO> initialWallet1History = transactionHistoryService.getFullTransactionHistory(wallet1Id);
+        List<TransactionHistoryDTO> initialWallet2History = transactionHistoryService.getFullTransactionHistory(wallet2Id);
+
+        // Capture the snapshot
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet1Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet2Id);
+
+        // Verify that the balances remain the same after the snapshot
+        Long afterSnapshotWallet1Balance = walletBalanceService.getAvailableBalance(wallet1Id);
+        Long afterSnapshotWallet2Balance = walletBalanceService.getAvailableBalance(wallet2Id);
+
+        assertEquals(afterSnapshotWallet1Balance, INITIAL_BALANCE);
+        assertEquals(afterSnapshotWallet2Balance, INITIAL_BALANCE);
+
+        assertEquals(initialWallet1Balance, afterSnapshotWallet1Balance);
+        assertEquals(initialWallet2Balance, afterSnapshotWallet2Balance);
+
+        // Verify that the transaction histories remain the same after the snapshot
+        List<TransactionHistoryDTO> afterSnapshotWallet1History = transactionHistoryService.getFullTransactionHistory(wallet1Id);
+        List<TransactionHistoryDTO> afterSnapshotWallet2History = transactionHistoryService.getFullTransactionHistory(wallet2Id);
+
+        assertTrue(areTransactionHistoriesEqual(initialWallet1History, afterSnapshotWallet1History));
+        assertTrue(areTransactionHistoriesEqual(initialWallet2History, afterSnapshotWallet2History));
+    }
+
+    private boolean areTransactionHistoriesEqual(List<TransactionHistoryDTO> history1, List<TransactionHistoryDTO> history2) {
+        if (history1.size() != history2.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < history1.size(); i++) {
+            TransactionHistoryDTO trans1 = history1.get(i);
+            TransactionHistoryDTO trans2 = history2.get(i);
+
+            if (!trans1.equals(trans2)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

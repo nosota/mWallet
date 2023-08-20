@@ -80,7 +80,7 @@ public class TransactionHistoryService {
             dto.setType(tuple.get("type", String.class));
             dto.setAmount(tuple.get("amount", Long.class));
             dto.setStatus(tuple.get("status", String.class));
-            dto.setTimestamp(tuple.get("timestamp", Timestamp.class));
+            dto.setTimestamp(tuple.get("hold_timestamp", Timestamp.class));
             history.add(dto);
         }
 
