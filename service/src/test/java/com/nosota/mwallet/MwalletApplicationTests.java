@@ -1,6 +1,8 @@
 package com.nosota.mwallet;
 import static org.assertj.core.api.Assertions.*;
 import java.text.MessageFormat;
+
+import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
@@ -65,7 +67,7 @@ class MwalletApplicationTests {
         TransactionGroupStatus trxStatus = walletTransactionService.getStatusForReferenceId(refId);
         assertThat(trxStatus).isEqualTo(TransactionGroupStatus.CONFIRMED);
 
-        List<Transaction> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
+        List<TransactionDTO> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
         transactionList.forEach(item -> {
             String formatted = MessageFormat.format("Wallet: {0}, Transaction: {2}, ReferenceId: {3}, Status: {4}, Amount: {1} ",
                     item.getWalletId(), item.getAmount(),
@@ -97,7 +99,7 @@ class MwalletApplicationTests {
         TransactionGroupStatus trxStatus = walletTransactionService.getStatusForReferenceId(refId);
         assertThat(trxStatus).isEqualTo(TransactionGroupStatus.CONFIRMED);
 
-        List<Transaction> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
+        List<TransactionDTO> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
         transactionList.forEach(item -> {
             String formatted = MessageFormat.format("Wallet: {0}, Transaction: {2}, ReferenceId: {3}, Status: {4}, Amount: {1} ",
                     item.getWalletId(), item.getAmount(),

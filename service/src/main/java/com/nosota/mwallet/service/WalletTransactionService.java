@@ -1,5 +1,7 @@
 package com.nosota.mwallet.service;
 
+import com.nosota.mwallet.dto.TransactionDTO;
+import com.nosota.mwallet.dto.TransactionMapper;
 import com.nosota.mwallet.error.InsufficientFundsException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.error.WalletNotFoundException;
@@ -116,7 +118,8 @@ public class WalletTransactionService {
                 .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
     }
 
-    public List<Transaction> getTransactionsByReferenceId(UUID referenceId) {
-        return transactionRepository.findByReferenceId(referenceId);
+    public List<TransactionDTO> getTransactionsByReferenceId(UUID referenceId) {
+        List<Transaction> transactions = transactionRepository.findByReferenceId(referenceId);
+        return TransactionMapper.INSTANCE.toDTOList(transactions);
     }
 }

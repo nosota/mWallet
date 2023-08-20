@@ -1,36 +1,20 @@
-package com.nosota.mwallet.model;
+package com.nosota.mwallet.dto;
 
-import jakarta.persistence.*;
+import com.nosota.mwallet.model.TransactionStatus;
+import com.nosota.mwallet.model.TransactionType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-public class Transaction {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class TransactionDTO {
     private Integer id;
-
-    @Column(name = "referTransactionence_id", nullable = true)
     private UUID referenceId;
-
-    @Column(name = "wallet_id")
     private Integer walletId;
-
     private Long amount;
-
-    @Enumerated(EnumType.STRING)
     private TransactionStatus status;
-
-    @Enumerated(EnumType.STRING)
-    private TransactionType type; // CREDIT or DEBIT
-
-    @Column(name = "hold_timestamp")
+    private TransactionType type;
     private LocalDateTime holdTimestamp;
-
-    @Column(name = "confirm_reject_timestamp")
     private LocalDateTime confirmRejectTimestamp;
-
     private String description;
 
     public Integer getId() {
@@ -80,7 +64,6 @@ public class Transaction {
     public void setStatus(TransactionStatus status) {
         this.status = status;
     }
-
 
     public LocalDateTime getHoldTimestamp() {
         return holdTimestamp;
