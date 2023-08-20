@@ -49,4 +49,10 @@ public class WalletOwnershipService {
         // Convert to DTO and return
         return WalletOwnerMapper.INSTANCE.toDTO(savedWalletOwner);
     }
+
+    @Transactional
+    public Optional<String> findOwnerRefByWalletId(Integer walletId) {
+        return walletOwnerRepository.findByWalletId(walletId)
+                .map(WalletOwner::getOwnerRef);
+    }
 }
