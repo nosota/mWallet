@@ -11,7 +11,7 @@ CREATE TABLE transaction
     id                       SERIAL PRIMARY KEY,
     wallet_id                INTEGER REFERENCES wallet (id),
     amount                   BIGINT      NOT NULL,
-    type                     VARCHAR(32) NOT NULL,
+    type                     VARCHAR(32) NOT NULL, -- like 'DEBIT' or 'CREDIT' or 'LEDGER'
     status                   VARCHAR(32) NOT NULL,
     hold_timestamp           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     confirm_reject_timestamp TIMESTAMP,
@@ -24,7 +24,7 @@ CREATE TABLE transaction_snapshot
 (
     id                       SERIAL PRIMARY KEY,
     wallet_id                INTEGER     NOT NULL REFERENCES wallet (id),
-    type                     VARCHAR(50) NOT NULL, -- like 'DEBIT' or 'CREDIT'
+    type                     VARCHAR(50) NOT NULL, -- like 'DEBIT' or 'CREDIT' or 'LEDGER'
     amount                   BIGINT      NOT NULL,
     status                   VARCHAR(50) NOT NULL, -- like 'HOLD', 'CONFIRMED', or 'REJECTED'
     hold_timestamp           TIMESTAMP,

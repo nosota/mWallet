@@ -5,8 +5,8 @@ import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.WalletBalanceService;
 import com.nosota.mwallet.service.WalletManagementService;
-import com.nosota.mwallet.service.WalletTransactionService;
-import com.nosota.mwallet.service.WalletTransactionSnapshotService;
+import com.nosota.mwallet.service.TransactionService;
+import com.nosota.mwallet.service.TransactionSnapshotService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,10 +27,10 @@ class MwalletApplicationTests {
     private WalletBalanceService walletBalanceService;
 
     @Autowired
-    private WalletTransactionService walletTransactionService;
+    private TransactionService transactionService;
 
     @Autowired
-    private WalletTransactionSnapshotService walletTransactionSnapshotService;
+    private TransactionSnapshotService transactionSnapshotService;
 
     @Test
     void contextLoads() {
@@ -59,7 +59,7 @@ class MwalletApplicationTests {
         assertThat(balance1).isEqualTo(10L);
         assertThat(balance2).isEqualTo(0L);
 
-        UUID refId = walletTransactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 10L);
+        UUID refId = transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 10L);
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -67,10 +67,10 @@ class MwalletApplicationTests {
         assertThat(balance1).isEqualTo(0L);
         assertThat(balance2).isEqualTo(10L);
 
-        TransactionGroupStatus trxStatus = walletTransactionService.getStatusForReferenceId(refId);
+        TransactionGroupStatus trxStatus = transactionService.getStatusForReferenceId(refId);
         assertThat(trxStatus).isEqualTo(TransactionGroupStatus.CONFIRMED);
 
-        List<TransactionDTO> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
+        List<TransactionDTO> transactionList = transactionService.getTransactionsByReferenceId(refId);
         transactionList.forEach(item -> {
             String formatted = MessageFormat.format("Wallet: {0}, Transaction: {2}, ReferenceId: {3}, Status: {4}, Amount: {1} ",
                     item.getWalletId(), item.getAmount(),
@@ -91,7 +91,7 @@ class MwalletApplicationTests {
         assertThat(balance1).isEqualTo(10L);
         assertThat(balance2).isEqualTo(0L);
 
-        UUID refId = walletTransactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 10L);
+        UUID refId = transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 10L);
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -99,10 +99,10 @@ class MwalletApplicationTests {
         assertThat(balance1).isEqualTo(0L);
         assertThat(balance2).isEqualTo(10L);
 
-        TransactionGroupStatus trxStatus = walletTransactionService.getStatusForReferenceId(refId);
+        TransactionGroupStatus trxStatus = transactionService.getStatusForReferenceId(refId);
         assertThat(trxStatus).isEqualTo(TransactionGroupStatus.CONFIRMED);
 
-        List<TransactionDTO> transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
+        List<TransactionDTO> transactionList = transactionService.getTransactionsByReferenceId(refId);
         transactionList.forEach(item -> {
             String formatted = MessageFormat.format("Wallet: {0}, Transaction: {2}, ReferenceId: {3}, Status: {4}, Amount: {1} ",
                     item.getWalletId(), item.getAmount(),
@@ -111,7 +111,7 @@ class MwalletApplicationTests {
             System.out.println(formatted);
         });
 
-        walletTransactionSnapshotService.captureDailySnapshot();
+        transactionSnapshotService.captureDailySnapshot();
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -119,7 +119,7 @@ class MwalletApplicationTests {
         assertThat(balance1).isEqualTo(0L);
         assertThat(balance2).isEqualTo(10L);
 
-        transactionList = walletTransactionService.getTransactionsByReferenceId(refId);
+        transactionList = transactionService.getTransactionsByReferenceId(refId);
         transactionList.forEach(item -> {
             String formatted = MessageFormat.format("Wallet: {0}, Transaction: {2}, ReferenceId: {3}, Status: {4}, Amount: {1} ",
                     item.getWalletId(), item.getAmount(),
