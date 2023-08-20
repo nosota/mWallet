@@ -1,30 +1,35 @@
 package com.nosota.mwallet.service;
 
+import com.nosota.mwallet.model.Wallet;
+import com.nosota.mwallet.repository.WalletRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class SnapshotScheduler {
     private static Logger LOG = LoggerFactory.getLogger(WalletService.class);
 
     @Autowired
-    private JobLauncher jobLauncher;
+    private WalletSnapshotService walletSnapshotService;
 
     @Autowired
-    private Job captureSnapshotJob;
+    private WalletRepository walletRepository;
 
-    @Scheduled(cron = "0 0 0 * * ?")  // Schedule for every day at midnight
+    // @Scheduled(cron = "0 0 0 * * ?")
     public void runSnapshotJob() {
-        try {
-            jobLauncher.run(captureSnapshotJob, new JobParameters());
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e);
+        // TODO: Very basic implementation just for testing.
+        List<Wallet> allWallets = walletRepository.findAll();
+        for (Wallet wallet : allWallets) {
+            try {
+                walletSnapshotService.captureSnapshotForWallet(wallet);
+            } catch (Exception e) {
+                LOG.error("Error capturing snapshot for wallet: " + e.getMessage(), e);
+            }
         }
     }
 }

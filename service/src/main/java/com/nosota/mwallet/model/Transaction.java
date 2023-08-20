@@ -55,14 +55,6 @@ public class Transaction {
         this.id = id;
     }
 
-//    public Wallet getWallet() {
-//        return wallet;
-//    }
-//
-//    public void setWallet(Wallet wallet) {
-//        this.wallet = wallet;
-//    }
-
     public Long getAmount() {
         return amount;
     }
