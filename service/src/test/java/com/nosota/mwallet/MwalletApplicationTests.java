@@ -1,18 +1,21 @@
 package com.nosota.mwallet;
-import static org.assertj.core.api.Assertions.*;
-import java.text.MessageFormat;
 
 import com.nosota.mwallet.dto.TransactionDTO;
-import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
-import com.nosota.mwallet.service.*;
+import com.nosota.mwallet.service.WalletBalanceService;
+import com.nosota.mwallet.service.WalletManagementService;
+import com.nosota.mwallet.service.WalletTransactionService;
+import com.nosota.mwallet.service.WalletTransactionSnapshotService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 class MwalletApplicationTests {

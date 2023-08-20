@@ -1,11 +1,12 @@
 package com.nosota.mwallet.repository;
 
-import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionSnapshot;
+import com.nosota.mwallet.model.TransactionStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository

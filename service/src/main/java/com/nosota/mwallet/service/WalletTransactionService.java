@@ -2,9 +2,6 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.dto.TransactionMapper;
-import com.nosota.mwallet.error.InsufficientFundsException;
-import com.nosota.mwallet.error.TransactionNotFoundException;
-import com.nosota.mwallet.error.WalletNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
 import com.nosota.mwallet.model.TransactionGroupStatus;

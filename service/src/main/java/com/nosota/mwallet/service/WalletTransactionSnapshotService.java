@@ -1,8 +1,8 @@
 package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.model.Transaction;
-import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionSnapshot;
+import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.transaction.Transactional;
