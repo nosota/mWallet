@@ -1,5 +1,7 @@
 package com.nosota.mwallet.model;
+
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
