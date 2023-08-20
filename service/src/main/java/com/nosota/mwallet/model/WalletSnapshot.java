@@ -35,6 +35,18 @@ public class WalletSnapshot {
     @Column(name = "snapshot_date", nullable = false)
     private LocalDateTime snapshotDate;
 
+    public WalletSnapshot(Integer walletId, Long amount, TransactionType type,
+                          TransactionStatus status, LocalDateTime holdTimestamp,
+                          LocalDateTime confirmRejectTimestamp) {
+        this.walletId = walletId;
+        this.amount = amount;
+        this.type = type;
+        this.status = status;
+        this.holdTimestamp = holdTimestamp;
+        this.confirmRejectTimestamp = confirmRejectTimestamp;
+        this.snapshotDate = LocalDateTime.now();
+    }
+
     public Integer getId() {
         return id;
     }

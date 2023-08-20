@@ -1,6 +1,7 @@
 package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.model.Transaction;
+import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.WalletSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletSnapshotRepository;
@@ -8,7 +9,10 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -23,28 +27,34 @@ public class WalletSnapshotService {
 
     @Transactional
     public void captureDailySnapshot() {
-        // Fetch all transactions from the transactions table
-        List<Transaction> transactions = transactionRepository.findAll();
+        // 1. Fetch all the CONFIRMED transactions
+        List<Transaction> confirmedTransactions = transactionRepository.findAllByStatus(TransactionStatus.CONFIRMED);
 
-        // Convert transactions into WalletSnapshot entities and set the snapshot date
-        List<WalletSnapshot> snapshots = transactions.stream()
-                .map(this::transactionToSnapshot)
+        // 2. Extract the reference IDs from these transactions
+        Set<UUID> referenceIdsToSnapshot = confirmedTransactions.stream()
+                .map(Transaction::getReferenceId)
+                .collect(Collectors.toSet());
+
+        // 3. Fetch all transactions (HOLD, RESERVE, CONFIRMED) with the extracted reference IDs
+        List<UUID> referenceIdList = new ArrayList<>(referenceIdsToSnapshot);
+        List<Transaction> allRelatedTransactions = transactionRepository.findAllByReferenceIdIn(referenceIdList);
+
+        // 4. Convert these transactions to wallet snapshots
+        List<WalletSnapshot> snapshots = allRelatedTransactions.stream()
+                .map(transaction -> new WalletSnapshot(
+                        transaction.getWalletId(),
+                        transaction.getAmount(),
+                        transaction.getType(),
+                        transaction.getStatus(),
+                        transaction.getHoldTimestamp(),
+                        transaction.getConfirmRejectTimestamp()
+                ))
                 .collect(Collectors.toList());
 
-        // Save the converted snapshots to the wallet_snapshots table
+        // 5. Save the snapshots
         walletSnapshotRepository.saveAll(snapshots);
-    }
 
-    private WalletSnapshot transactionToSnapshot(Transaction transaction) {
-        WalletSnapshot snapshot = new WalletSnapshot();
-        snapshot.setWalletId(transaction.getWalletId()); // Changed this line
-        snapshot.setType(transaction.getType());
-        snapshot.setAmount(transaction.getAmount());
-        snapshot.setStatus(transaction.getStatus());
-        snapshot.setHoldTimestamp(transaction.getHoldTimestamp());
-        snapshot.setConfirmRejectTimestamp(transaction.getConfirmRejectTimestamp());
-        snapshot.setSnapshotDate(LocalDateTime.now());
-
-        return snapshot;
+        // 6. Delete the transactions from the transactions table
+        transactionRepository.deleteAll(allRelatedTransactions);
     }
 }

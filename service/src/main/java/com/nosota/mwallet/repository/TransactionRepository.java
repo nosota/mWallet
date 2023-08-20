@@ -15,8 +15,11 @@ import java.util.List;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
-    List<Transaction> findByStatus(TransactionStatus status);
-    List<Transaction> findByWalletIdAndStatus(Integer walletId, TransactionStatus status);
+    // This method fetches all transactions with a given status
+    List<Transaction> findAllByStatus(TransactionStatus status);
+
+    // This method fetches all transactions that have a referenceId in the given list of reference IDs
+    List<Transaction> findAllByReferenceIdIn(List<UUID> referenceIds);
 
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.referenceId = :referenceId AND (t.status = :status1 OR t.status = :status2)")
     Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status1") TransactionStatus status1, @Param("status2") TransactionStatus status2);
