@@ -19,8 +19,39 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     // This method fetches all transactions that have a referenceId in the given list of reference IDs
     List<Transaction> findAllByReferenceIdIn(List<UUID> referenceIds);
 
+    List<Transaction> findByReferenceId(UUID referenceId);
+
+    /**
+     * Retrieves a transaction based on the provided wallet ID, reference ID, and one of the two specified statuses.
+     *
+     * <p>This method is specifically designed to fetch a transaction that matches the given wallet ID and reference ID,
+     * and whose status is either the first or the second status provided. It's particularly useful when you
+     * want to narrow down your search criteria based on multiple potential statuses.</p>
+     *
+     * @param walletId The unique identifier of the wallet associated with the transaction.
+     * @param referenceId The unique identifier used to group or reference the transaction.
+     * @param status1 The first potential status the transaction could have.
+     * @param status2 The second potential status the transaction could have.
+     * @return An Optional containing the transaction if found; otherwise, an empty Optional.
+     */
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.referenceId = :referenceId AND (t.status = :status1 OR t.status = :status2)")
     Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status1") TransactionStatus status1, @Param("status2") TransactionStatus status2);
 
-    List<Transaction> findByReferenceId(UUID referenceId);
+    /**
+     * Retrieves all transactions associated with a specific wallet ID and transaction status.
+     *
+     * @param walletId The ID of the wallet to filter transactions by.
+     * @param status The status of the transactions to retrieve.
+     * @return A list of transactions matching the specified wallet ID and transaction status.
+     */
+    List<Transaction> findAllByWalletIdAndStatus(Integer walletId, TransactionStatus status);
+
+    /**
+     * Retrieves all transactions associated with a specific wallet ID and a set of reference IDs.
+     *
+     * @param walletId The ID of the wallet to filter transactions by.
+     * @param referenceIds The set of reference IDs to filter the transactions by.
+     * @return A list of transactions matching the specified wallet ID and contained within the set of reference IDs.
+     */
+    List<Transaction> findAllByWalletIdAndReferenceIdIn(Integer walletId, List<UUID> referenceIds);
 }

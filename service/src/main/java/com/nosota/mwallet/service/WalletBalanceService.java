@@ -1,8 +1,8 @@
 package com.nosota.mwallet.service;
 
+import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,14 +14,25 @@ public class WalletBalanceService {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private TransactionSnapshotRepository transactionSnapshotRepository;
+
     /**
-     * In the WalletBalanceService.getAvailableBalance, the query is designed to sum the amounts
-     * from both the transaction table and the transaction_snapshot table where the status is CONFIRMED.
-     * This includes the ledger entries as well as regular transaction snapshots, ensuring that the
-     * ledger entries contribute to the available balance.
+     * Retrieves the available balance of the specified wallet by aggregating the confirmed transaction amounts
+     * from both the main transaction table and the snapshot table.
      *
-     * @param walletId
-     * @return
+     * The available balance is calculated by summing up the amounts of all 'CONFIRMED' transactions
+     * related to the wallet from both transaction sources.
+     *
+     * <p>
+     * This method utilizes a native SQL query that unifies data from the main transaction table and the snapshot
+     * table to efficiently compute the total confirmed amount. The result is then cast to a {@link BigDecimal}
+     * and converted to a long value.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet for which the balance is being retrieved.
+     * @return The available balance of the wallet. If no transactions or snapshots are found, returns 0.
+     *
      */
     public Long getAvailableBalance(Integer walletId) {
         String sql = """
@@ -43,5 +54,25 @@ public class WalletBalanceService {
         } else {
             return 0L;
         }
+    }
+
+    /**
+     * Retrieves the sum of all HOLD transaction amounts for the specified wallet.
+     *
+     * @param walletId The unique identifier (ID) of the wallet.
+     * @return The total of HOLD amounts. If no transactions are found, returns 0.
+     */
+    public Long getHoldBalanceForWallet(Integer walletId) {
+        return transactionSnapshotRepository.getHoldBalanceForWallet(walletId);
+    }
+
+    /**
+     * Retrieves the sum of all RESERVED transaction amounts for the specified wallet.
+     *
+     * @param walletId The unique identifier (ID) of the wallet.
+     * @return The total of RESERVED amounts. If no transactions are found, returns 0.
+     */
+    public Long getReservedBalanceForWallet(Integer walletId) {
+        return transactionSnapshotRepository.getReservedBalanceForWallet(walletId);
     }
 }

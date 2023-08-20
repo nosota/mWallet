@@ -2,10 +2,7 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
-import jakarta.persistence.Tuple;
+import jakarta.persistence.*;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;

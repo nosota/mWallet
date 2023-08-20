@@ -50,6 +50,17 @@ public class WalletOwnershipService {
         return WalletOwnerMapper.INSTANCE.toDTO(savedWalletOwner);
     }
 
+    /**
+     * Retrieves the owner reference associated with the specified wallet ID.
+     * <p>
+     * This method fetches the {@link WalletOwner} record associated with the given wallet ID
+     * and returns the owner reference string. If no such record exists for the provided
+     * wallet ID, an empty {@link Optional} is returned.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet whose owner reference needs to be fetched.
+     * @return An {@link Optional} containing the owner reference string if found; otherwise, an empty {@link Optional}.
+     */
     @Transactional
     public Optional<String> findOwnerRefByWalletId(Integer walletId) {
         return walletOwnerRepository.findByWalletId(walletId)

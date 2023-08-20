@@ -1,7 +1,6 @@
 package com.nosota.mwallet.dto;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 
 public class TransactionHistoryDTO {
     private Integer id; // transaction ID or snapshot ID

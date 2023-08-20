@@ -111,7 +111,8 @@ class MwalletApplicationTests {
             System.out.println(formatted);
         });
 
-        transactionSnapshotService.captureDailySnapshot();
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet1Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet2Id);
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         balance2 = walletBalanceService.getAvailableBalance(wallet2Id);

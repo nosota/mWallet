@@ -5,61 +5,30 @@ import com.nosota.mwallet.model.TransactionStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public class TransactionSnapshotRepository {
+public interface TransactionSnapshotRepository extends JpaRepository<TransactionSnapshot, Integer> {
+    /**
+     * Retrieves the sum of all HOLD transaction amounts for the specified wallet.
+     *
+     * @param walletId The unique identifier (ID) of the wallet.
+     * @return The total of HOLD amounts. If no transactions are found, returns 0.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM TransactionSnapshot t WHERE t.walletId = :walletId AND t.status = 'HOLD'")
+    Long getHoldBalanceForWallet(@Param("walletId") Integer walletId);
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
-    public TransactionSnapshot save(TransactionSnapshot snapshot) {
-        entityManager.persist(snapshot);
-        return snapshot;
-    }
-
-    public List<TransactionSnapshot> findByWalletId(Long walletId) {
-        TypedQuery<TransactionSnapshot> query = entityManager.createQuery(
-                "SELECT w FROM TransactionSnapshot w WHERE w.walletId = :walletId", TransactionSnapshot.class);
-        query.setParameter("walletId", walletId);
-        return query.getResultList();
-    }
-
-    public void saveAll(List<TransactionSnapshot> snapshots) {
-        for (TransactionSnapshot snapshot : snapshots) {
-            entityManager.persist(snapshot);
-        }
-    }
-
-    public Long getConfirmedBalance(Long walletId) {
-        String jpql = "SELECT SUM(ws.amount) FROM TransactionSnapshot ws WHERE ws.walletId = :walletId AND ws.status = :status";
-        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
-        query.setParameter("walletId", walletId);
-        query.setParameter("status", TransactionStatus.CONFIRMED);
-
-        Long result = query.getSingleResult();
-        return result != null ? result : 0L;
-    }
-
-    public Long getHoldBalance(Long walletId) {
-        String jpql = "SELECT SUM(ws.amount) FROM TransactionSnapshot ws WHERE ws.walletId = :walletId AND ws.status = :status";
-        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
-        query.setParameter("walletId", walletId);
-        query.setParameter("status", TransactionStatus.HOLD);
-
-        Long result = query.getSingleResult();
-        return result != null ? result : 0L;
-    }
-
-    public Long getRejectedBalance(Long walletId) {
-        String jpql = "SELECT SUM(ws.amount) FROM TransactionSnapshot ws WHERE ws.walletId = :walletId AND ws.status = :status";
-        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
-        query.setParameter("walletId", walletId);
-        query.setParameter("status", TransactionStatus.REJECTED);
-
-        Long result = query.getSingleResult();
-        return result != null ? result : 0L;
-    }
+    /**
+     * Retrieves the sum of all RESERVED transaction amounts for the specified wallet.
+     *
+     * @param walletId The unique identifier (ID) of the wallet.
+     * @return The total of RESERVED amounts. If no transactions are found, returns 0.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM TransactionSnapshot t WHERE t.walletId = :walletId AND t.status = 'RESERVED'")
+    Long getReservedBalanceForWallet(@Param("walletId") Integer walletId);
 }

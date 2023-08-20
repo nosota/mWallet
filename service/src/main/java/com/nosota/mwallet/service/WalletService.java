@@ -32,8 +32,32 @@ public class WalletService {
     @Autowired
     private WalletBalanceService walletBalanceService;
 
+    /**
+     * Holds a specified amount from the given wallet, ensuring the wallet has the necessary balance.
+     * <p>
+     * This method attempts to hold a specified amount from a wallet, identified by the provided wallet ID.
+     * Before the hold operation is carried out, the available balance in the wallet is checked to ensure
+     * that the hold amount does not exceed the available balance. If the wallet has insufficient funds or
+     * if the wallet is not found, appropriate exceptions are thrown.
+     * </p>
+     * <p>
+     * If the hold operation is successful, a new {@link Transaction} record with a status of "HOLD"
+     * is created and saved to the database, and the transaction's ID is returned.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet from which the amount is to be held.
+     * @param amount The amount to be held from the wallet. This amount should be positive.
+     * @param referenceId A unique identifier (UUID) representing the reference or context for this hold operation.
+     * @return The unique identifier (ID) of the created transaction representing the hold operation.
+     * @throws WalletNotFoundException if the specified wallet ID does not correspond to an existing wallet.
+     * @throws InsufficientFundsException if the wallet does not have sufficient funds to cover the hold amount.
+     */
     @Transactional
     public Integer hold(Integer walletId, Long amount, UUID referenceId) throws WalletNotFoundException, InsufficientFundsException {
+        if(amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive.");
+        }
+
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
@@ -56,8 +80,29 @@ public class WalletService {
         return savedTransaction.getId();
     }
 
-    @Transactional
+    /**
+     * Reserves a specified amount for the given wallet.
+     * <p>
+     * This method creates a new {@link Transaction} with a status of "RESERVE" for a wallet, identified
+     * by the provided wallet ID. The transaction signifies the reservation of a certain amount for
+     * future use. No balance checks are done for reservation, as this operation typically denotes incoming funds.
+     * </p>
+     * <p>
+     * If the wallet with the specified ID is not found in the database, a {@link WalletNotFoundException} is thrown.
+     * If the reservation operation is successful, the ID of the created transaction is returned.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet for which the amount is to be reserved.
+     * @param amount The amount to be reserved. This value should be positive, denoting an incoming or addition of funds.
+     * @param referenceId A unique identifier (UUID) representing the reference or context for this reservation operation.
+     * @return The unique identifier (ID) of the created transaction representing the reservation.
+     * @throws WalletNotFoundException if the specified wallet ID does not correspond to an existing wallet.
+     */    @Transactional
     public Integer reserve(Integer walletId, Long amount, UUID referenceId) throws WalletNotFoundException {
+         if(amount <= 0) {
+             throw new IllegalArgumentException("amount must be positive.");
+         }
+
         // Check if the wallet exists and if not, throw WalletNotFoundException
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
@@ -73,6 +118,24 @@ public class WalletService {
         return transaction.getId();
     }
 
+    /**
+     * Confirms a previously held or reserved transaction for a given wallet.
+     * <p>
+     * The method attempts to find an existing transaction with the status "HOLD" or "RESERVE" associated with
+     * the specified wallet ID and reference ID. If found, a new transaction is created with the status "CONFIRMED"
+     * to mark the successful completion of the operation.
+     * </p>
+     * <p>
+     * If no corresponding "HOLD" or "RESERVE" transaction is found for the given wallet ID and reference ID,
+     * a {@link TransactionNotFoundException} is thrown.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet associated with the transaction.
+     * @param referenceId The unique identifier (UUID) used during the initial HOLD or RESERVE operation.
+     * @return The unique identifier (ID) of the created transaction representing the confirmation.
+     * @throws TransactionNotFoundException if no corresponding "HOLD" or "RESERVE" transaction is found for
+     *         the specified wallet ID and reference ID.
+     */
     @Transactional
     public Integer confirm(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
         // Check if a HOLD transaction exists for the given referenceId
@@ -99,6 +162,24 @@ public class WalletService {
         return savedTransaction.getId();
     }
 
+    /**
+     * Rejects a previously held or reserved transaction for a given wallet.
+     * <p>
+     * This method checks for the presence of an existing transaction with the status "HOLD" or "RESERVE" associated
+     * with the provided wallet ID and reference ID. If found, a new transaction is created with the status "REJECTED"
+     * to indicate the operation was not successfully completed.
+     * </p>
+     * <p>
+     * If no "HOLD" or "RESERVE" transaction is found for the given wallet ID and reference ID,
+     * a {@link TransactionNotFoundException} is thrown.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet associated with the transaction.
+     * @param referenceId The unique identifier (UUID) used during the initial HOLD or RESERVE operation.
+     * @return The unique identifier (ID) of the created transaction representing the rejection.
+     * @throws TransactionNotFoundException if no corresponding "HOLD" or "RESERVE" transaction is found for
+     *         the specified wallet ID and reference ID.
+     */
     @Transactional
     public Integer reject(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
         // Check if a HOLD transaction exists for the given referenceId
@@ -126,6 +207,20 @@ public class WalletService {
         return savedTransaction.getId();
     }
 
+    /**
+     * Retrieves the {@link Wallet} entity associated with the specified wallet ID.
+     * <p>
+     * This method attempts to fetch the wallet using the provided ID from the underlying repository.
+     * </p>
+     * <p>
+     * If no wallet is found for the given ID, an {@link IllegalArgumentException} is thrown with a
+     * message indicating an invalid wallet ID.
+     * </p>
+     *
+     * @param walletId The unique identifier (ID) of the wallet to be retrieved.
+     * @return The {@link Wallet} entity corresponding to the provided ID.
+     * @throws IllegalArgumentException if no wallet is found for the specified ID.
+     */
     private Wallet getWallet(Integer walletId) {
         return walletRepository.findById(walletId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));

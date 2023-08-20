@@ -6,7 +6,9 @@ import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionException;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +23,17 @@ public class WalletManagementService {
     @Autowired
     private TransactionGroupRepository transactionGroupRepository;
 
+    /**
+     * Creates a new wallet of the specified type and persists it to the database.
+     * <p>
+     * This method initializes a new {@link Wallet} instance with the provided type,
+     * saves it using the {@link WalletRepository}, and returns the generated ID of the
+     * newly created wallet.
+     * </p>
+     *
+     * @param type The type of the wallet to be created, defined as an enumeration {@link WalletType}.
+     * @return The unique identifier (ID) of the newly created wallet.
+     */
     @Transactional
     public Integer createNewWallet(WalletType type) {
         Wallet newWallet = new Wallet();
@@ -28,6 +41,19 @@ public class WalletManagementService {
         return walletRepository.save(newWallet).getId();
     }
 
+    /**
+     * Creates a new wallet of the specified type with an initial balance and persists it to the database.
+     * <p>
+     * This method initializes a new {@link Wallet} instance with the provided type and initial balance.
+     * It then saves the wallet using the {@link WalletRepository} and returns the generated ID of the
+     * newly created wallet. The initial balance is accounted for as a transaction entry to ensure consistency
+     * with the transaction history.
+     * </p>
+     *
+     * @param type          The type of the wallet to be created, defined as an enumeration {@link WalletType}.
+     * @param initialBalance The starting balance to be set for the newly created wallet. This should be a non-negative value.
+     * @return The unique identifier (ID) of the newly created wallet with the specified initial balance.
+     */
     @Transactional
     public Integer createNewWalletWithBalance(WalletType type, Long initialBalance) {
         // Create a new wallet

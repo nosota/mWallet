@@ -91,8 +91,82 @@ provides a solid ground for future innovations without entangling complexities.
 
 ---
 
+### Externalized Operations: Daily Snapshots and Archiving
+
+Our wallet system is designed with modularity in mind. It offers built-in functionalities for creating daily snapshots
+and archiving older transactions, ensuring efficient performance and data compactness even as transaction volume grows.
+
+However, the mechanism to invoke these operations has been externalized, keeping the system's core design uncluttered.
+This design decision was taken with adaptability in focus. Different solutions or applications that integrate with our
+wallet system might have varying operational patterns, infrastructure setups, or preferences for when and how often
+these operations should be triggered.
+
+The functionalities for daily snapshots and archiving are housed within the `TransactionSnapshotService` class.
+Specifically, the methods responsible are:
+
+- `captureDailySnapshot(Integer walletId)`: Creates a snapshot of transactions for the specified wallet.
+- `archiveOldSnapshots(Integer walletId, LocalDateTime olderThan)`: Archives transactions older than a specified date
+  for the given wallet and provides ledger entries for streamlined balance computation.
+
+Setting up the invocation of these methods should be managed externally, based on the specific requirements and
+operational dynamics of the solution leveraging this wallet system. It allows for a high degree of customization,
+whether one wants to use CRON jobs, event-driven triggers, manual interventions, or any other scheduling mechanisms.
+
+By allowing the integration layer or the parent solution to control these operations, we ensure that the wallet system
+remains both versatile and adaptable to diverse usage scenarios.
+
+---
+
+### Externalized Operations: Complex Funds Transfer
+
+In the realm of financial applications, there are multifaceted scenarios where the need arises to transfer funds across
+three or more wallets. Such operations might not just involve the mere movement of money but may also encompass
+intricate business rules, verification thresholds, and intensive security checks.
+
+#### Limitation in the Wallet System
+
+Our Wallet System is designed with a modular and extensible philosophy, focusing on core functionalities. Thus, it
+deliberately excludes built-in functions for transferring funds between three or more wallets. The primary reason for
+this exclusion is the high variability and complexity of multi-wallet transfers that often require bespoke solutions
+tailored to the specific needs of each project.
+
+#### Building Your Custom Complex Funds Transfer
+
+Creating a complex funds transfer feature atop the Wallet System is feasible and can be streamlined by leveraging the
+existing functionalities.
+
+1. **Starting Point**: The `TransactionService.transferBetweenTwoWallets` method provides a foundational example. It
+   illustrates the key components required for any funds transfer, namely:
+    - Validating wallets.
+    - Holding and reserving funds.
+    - Confirming or rejecting the transactions.
+
+   This method can serve as an archetype when designing more sophisticated multi-wallet transfers.
+
+2. **Transaction Group Management**: When dealing with a collection of transactions as part of a single logical
+   operation, it's essential to use the `TransactionGroup` entity.
+    - Every group of transactions should belong to one unique `TransactionGroup`.
+    - The status of the `TransactionGroup` should mirror the state of its associated transactions. For instance, if all
+      transactions are successful, the group's status should be set to `CONFIRMED`.
+
+3. **Error Handling & Rollback**: Multi-wallet transfers inherently have multiple points of failure. It's crucial to:
+    - Capture and log all errors.
+    - Rollback any interim transactions that might have been processed before an error occurred. The `REJECTED` status
+      can be used to invalidate a previously held or reserved transaction.
+    - Ensure that the status of the `TransactionGroup` accurately reflects the outcome – especially in cases of partial
+      success or failure.
+
+4. **Security & Verification**: Given that complex transfers might necessitate additional verification and security
+   checks:
+    - Implement multi-factor authentication or OTPs where required.
+    - Ensure all transaction requests are validated against predefined thresholds.
+    - Employ rigorous auditing to track every transaction change, especially in high-value transfers.
+
+---
+
 ### Entity Relationship Diagram (ERD):
-Note: This is a simplified representation and might not capture all the intricate relationships and constraints of the 
+
+Note: This is a simplified representation and might not capture all the intricate relationships and constraints of the
 actual database. Ensure to review and adjust as per the detailed requirements and actual relationships of your system.
 
 ```
@@ -154,3 +228,7 @@ actual database. Ensure to review and adjust as per the detailed requirements an
 | updated_at      |
 +-----------------+
 ```
+
+---
+
+
