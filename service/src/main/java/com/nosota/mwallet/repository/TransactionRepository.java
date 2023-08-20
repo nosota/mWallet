@@ -14,7 +14,4 @@ import java.util.List;
 public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
     List<Transaction> findByStatus(TransactionStatus status);
     List<Transaction> findByWalletIdAndStatus(Integer walletId, TransactionStatus status);
-
-    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.walletId = :walletId AND t.status = :status AND (t.transactionDate > :date OR :date IS NULL)")
-    Long findTotalAmountByWalletAndStatusAndDateAfter(Integer walletId, TransactionStatus status, @Nullable LocalDateTime date);
 }

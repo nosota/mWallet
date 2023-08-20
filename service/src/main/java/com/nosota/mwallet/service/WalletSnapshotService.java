@@ -1,47 +1,48 @@
 package com.nosota.mwallet.service;
 
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.Wallet;
-import com.nosota.mwallet.model.WalletBalance;
+import com.nosota.mwallet.model.Transaction;
+import com.nosota.mwallet.model.WalletSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;
-import com.nosota.mwallet.repository.WalletBalanceRepository;
+import com.nosota.mwallet.repository.WalletSnapshotRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Service
 public class WalletSnapshotService {
 
     @Autowired
-    private WalletBalanceRepository walletBalanceRepository;
-
-    @Autowired
     private TransactionRepository transactionRepository;
 
-    // Snapshot Balance =
-    //    Latest Snapshot Balance
-    //  + Confirmed Transactions since last Snapshot
-    //  + Rejected Transactions since last Snapshot
+    @Autowired
+    private WalletSnapshotRepository walletSnapshotRepository;
+
     @Transactional
-    public WalletBalance captureSnapshotForWallet(Wallet wallet) {
-        WalletBalance lastSnapshot = walletBalanceRepository.findLatestSnapshotByWallet(wallet);
-        Long lastSnapshotBalance = (lastSnapshot != null) ? lastSnapshot.getBalance() : 0L;
+    public void captureDailySnapshot() {
+        // Fetch all transactions from the transactions table
+        List<Transaction> transactions = transactionRepository.findAll();
 
-        // Calculate sum of confirmed transactions after the last snapshot
-        LocalDateTime lastSnapshotDate = (lastSnapshot != null) ? lastSnapshot.getSnapshotDate() : null;
-        Long postSnapshotConfirmedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.CONFIRMED, lastSnapshotDate);
-        Long postSnapshotRejectedAmount = transactionRepository.findTotalAmountByWalletAndStatusAndDateAfter(wallet.getId(), TransactionStatus.REJECTED, lastSnapshotDate);
+        // Convert transactions into WalletSnapshot entities and set the snapshot date
+        List<WalletSnapshot> snapshots = transactions.stream()
+                .map(this::transactionToSnapshot)
+                .collect(Collectors.toList());
 
-        // Calculate new snapshot balance
-        Long newSnapshotBalance = lastSnapshotBalance
-                + (postSnapshotConfirmedAmount != null ? postSnapshotConfirmedAmount : 0L)
-                + (postSnapshotRejectedAmount != null ? postSnapshotRejectedAmount : 0L);
+        // Save the converted snapshots to the wallet_snapshots table
+        walletSnapshotRepository.saveAll(snapshots);
+    }
 
-        WalletBalance snapshot = new WalletBalance();
-        snapshot.setWallet(wallet);
-        snapshot.setBalance(newSnapshotBalance);
+    private WalletSnapshot transactionToSnapshot(Transaction transaction) {
+        WalletSnapshot snapshot = new WalletSnapshot();
+        snapshot.setWalletId(transaction.getWalletId()); // Changed this line
+        snapshot.setType(transaction.getType());
+        snapshot.setAmount(transaction.getAmount());
+        snapshot.setStatus(transaction.getStatus());
+        snapshot.setHoldTimestamp(transaction.getHoldTimestamp());
+        snapshot.setConfirmRejectTimestamp(transaction.getConfirmRejectTimestamp());
         snapshot.setSnapshotDate(LocalDateTime.now());
 
         return snapshot;

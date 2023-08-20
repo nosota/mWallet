@@ -3,15 +3,14 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.Wallet;
+import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.repository.TransactionRepository;
-import com.nosota.mwallet.repository.WalletBalanceRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 
 @Service
@@ -25,20 +24,25 @@ public class WalletService {
     private TransactionRepository transactionRepository;
 
     @Autowired
-    private WalletBalanceRepository walletBalanceRepository;
+    private WalletBalanceService walletBalanceService;
+
+    public Wallet createNewWallet(WalletType type) {
+        Wallet newWallet = new Wallet();
+        newWallet.setType(type);
+        return walletRepository.save(newWallet);
+    }
 
     @Transactional
     public Long getAvailableBalance(Integer walletId) {
         Wallet wallet = getWallet(walletId);
-        Long availableBalance = walletBalanceRepository.getAvailableBalance(wallet);
+        Long availableBalance = walletBalanceService.getAvailableBalance(wallet.getId());
         return availableBalance;
     }
-
 
     @Transactional
     public Integer hold(Integer walletId, Long amount) {
         Wallet wallet = getWallet(walletId);
-        Long availableBalance = walletBalanceRepository.getAvailableBalance(wallet);
+        Long availableBalance = walletBalanceService.getAvailableBalance(wallet.getId());
         if (availableBalance < amount) {
             throw new IllegalArgumentException("Insufficient balance");
         }

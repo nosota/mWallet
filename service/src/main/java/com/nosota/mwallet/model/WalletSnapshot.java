@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class Transaction {
+@Table(name = "wallet_snapshot")
+public class WalletSnapshot {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -13,30 +15,25 @@ public class Transaction {
     @Column(name = "wallet_id")
     private Integer walletId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionType type;  // Enum of DEBIT or CREDIT
+
+    @Column(precision = 20, scale = 2, nullable = false)
     private Long amount;
 
     @Enumerated(EnumType.STRING)
-    private TransactionStatus status;
+    @Column(nullable = false)
+    private TransactionStatus status;  // Enum of HOLD, CONFIRMED, REJECTED
 
-    @Enumerated(EnumType.STRING)
-    private TransactionType type; // CREDIT or DEBIT
-
-    @Column(name = "hold_timestamp", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "hold_timestamp")
     private LocalDateTime holdTimestamp;
 
     @Column(name = "confirm_reject_timestamp")
     private LocalDateTime confirmRejectTimestamp;
 
-    private String description;
-
-
-    public Integer getWalletId() {
-        return walletId;
-    }
-
-    public void setWalletId(Integer walletId) {
-        this.walletId = walletId;
-    }
+    @Column(name = "snapshot_date", nullable = false)
+    private LocalDateTime snapshotDate;
 
     public Integer getId() {
         return id;
@@ -46,12 +43,12 @@ public class Transaction {
         this.id = id;
     }
 
-    public Long getAmount() {
-        return amount;
+    public Integer getWalletId() {
+        return walletId;
     }
 
-    public void setAmount(Long amount) {
-        this.amount = amount;
+    public void setWalletId(Integer walletId) {
+        this.walletId = walletId;
     }
 
     public TransactionType getType() {
@@ -62,6 +59,14 @@ public class Transaction {
         this.type = type;
     }
 
+    public Long getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Long amount) {
+        this.amount = amount;
+    }
+
     public TransactionStatus getStatus() {
         return status;
     }
@@ -69,7 +74,6 @@ public class Transaction {
     public void setStatus(TransactionStatus status) {
         this.status = status;
     }
-
 
     public LocalDateTime getHoldTimestamp() {
         return holdTimestamp;
@@ -87,11 +91,11 @@ public class Transaction {
         this.confirmRejectTimestamp = confirmRejectTimestamp;
     }
 
-    public String getDescription() {
-        return description;
+    public LocalDateTime getSnapshotDate() {
+        return snapshotDate;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setSnapshotDate(LocalDateTime snapshotDate) {
+        this.snapshotDate = snapshotDate;
     }
 }
