@@ -1,3 +1,6 @@
+-- While using an archive table without foreign keys has its advantages, mainly in flexibility
+-- and performance (no need to check for FK constraints during archiving), it does put the onus
+-- on your application and maintenance processes to ensure data consistency.
 CREATE TABLE transaction_snapshot_archive
     AS SELECT * FROM transaction_snapshot WHERE false;
 
