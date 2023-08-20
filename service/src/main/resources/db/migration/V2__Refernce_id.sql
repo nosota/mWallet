@@ -8,5 +8,5 @@ CREATE TABLE transaction_group
 
 ALTER TABLE transaction
     ADD COLUMN reference_id UUID,
-    ADD FOREIGN KEY (reference_id) REFERENCES transaction_groups(id);
+    ADD FOREIGN KEY (reference_id) REFERENCES transaction_group(id);
 

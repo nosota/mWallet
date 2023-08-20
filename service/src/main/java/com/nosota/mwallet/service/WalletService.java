@@ -75,7 +75,7 @@ public class WalletService {
         Transaction transaction = new Transaction();
         transaction.setWalletId(walletId);
         transaction.setAmount(amount);
-        transaction.setStatus(TransactionStatus.HOLD);
+        transaction.setStatus(TransactionStatus.RESERVE);
         transaction.setReferenceId(referenceId);
         transaction.setType(TransactionType.CREDIT);
 
@@ -86,13 +86,12 @@ public class WalletService {
     @Transactional
     public Integer confirm(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
         // Check if a HOLD transaction exists for the given referenceId
-        Optional<Transaction> holdTransactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatus(walletId, referenceId, TransactionStatus.HOLD);
-
-        if (!holdTransactionOpt.isPresent()) {
+        Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
+        if (!transactionOpt.isPresent()) {
             throw new TransactionNotFoundException("Hold transaction not found for reference ID " + referenceId + " and wallet ID " + walletId);
         }
 
-        Transaction holdTransaction = holdTransactionOpt.get();
+        Transaction holdTransaction = transactionOpt.get();
 
         // Create a new confirmed transaction
         Transaction confirmTransaction = new Transaction();
@@ -111,13 +110,12 @@ public class WalletService {
     @Transactional
     public Integer reject(Integer walletId, UUID referenceId) throws TransactionNotFoundException{
         // Check if a HOLD transaction exists for the given referenceId
-        Optional<Transaction> holdTransactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatus(walletId, referenceId, TransactionStatus.HOLD);
-
-        if (!holdTransactionOpt.isPresent()) {
+        Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
+        if (!transactionOpt.isPresent()) {
             throw new TransactionNotFoundException("Hold transaction not found for reference ID " + referenceId + " and wallet ID " + walletId);
         }
 
-        Transaction holdTransaction = holdTransactionOpt.get();
+        Transaction holdTransaction = transactionOpt.get();
 
         // Create a new rejected transaction
         Transaction rejectTransaction = new Transaction();
