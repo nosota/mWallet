@@ -107,15 +107,16 @@ public class WalletService {
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        Transaction transaction = new Transaction();
-        transaction.setWalletId(walletId);
-        transaction.setAmount(amount);
-        transaction.setStatus(TransactionStatus.RESERVE);
-        transaction.setReferenceId(referenceId);
-        transaction.setType(TransactionType.CREDIT);
+        Transaction reserveTransaction = new Transaction();
+        reserveTransaction.setWalletId(walletId);
+        reserveTransaction.setAmount(amount);
+        reserveTransaction.setStatus(TransactionStatus.RESERVE);
+        reserveTransaction.setReferenceId(referenceId);
+        reserveTransaction.setType(TransactionType.CREDIT);
+        reserveTransaction.setHoldTimestamp(LocalDateTime.now());
 
-        transaction = transactionRepository.save(transaction);
-        return transaction.getId();
+        reserveTransaction = transactionRepository.save(reserveTransaction);
+        return reserveTransaction.getId();
     }
 
     /**

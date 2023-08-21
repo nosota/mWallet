@@ -80,7 +80,14 @@ public class TransactionHistoryService {
             dto.setType(tuple.get("type", String.class));
             dto.setAmount(tuple.get("amount", Long.class));
             dto.setStatus(tuple.get("status", String.class));
-            dto.setTimestamp(tuple.get("hold_timestamp", Timestamp.class));
+            Timestamp tm = tuple.get("confirm_reject_timestamp", Timestamp.class);
+            if(tm == null) {
+                tm = tuple.get("hold_timestamp", Timestamp.class);
+            }
+            if(tm == null) {
+                throw new IllegalArgumentException("At least confirm_reject_timestamp or hold_timestamp must be not null.");
+            }
+            dto.setTimestamp(tm);
             history.add(dto);
         }
 
@@ -120,14 +127,14 @@ public class TransactionHistoryService {
     public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(Integer walletId, int pageNumber, int pageSize) {
         String baseSql = """
             SELECT
-                id, wallet_id, type, amount, status, hold_timestamp AS timestamp
+                id, wallet_id, type, amount, status, confirm_reject_timestamp AS timestamp
             FROM
                 transaction
             WHERE
                 wallet_id = :walletId
             UNION
             SELECT
-                id, wallet_id, type, amount, status, hold_timestamp AS timestamp
+                id, wallet_id, type, amount, status, confirm_reject_timestamp AS timestamp
             FROM
                 transaction_snapshot
             WHERE
