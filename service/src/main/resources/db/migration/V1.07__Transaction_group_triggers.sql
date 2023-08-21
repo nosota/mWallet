@@ -8,7 +8,7 @@ END;
 $$ language 'plpgsql';
 
 -- Bind the function to a trigger on the transaction_group table:
-CREATE TRIGGER update_transaction_group_modtime
+CREATE OR REPLACE TRIGGER update_transaction_group_modtime
     BEFORE UPDATE ON transaction_group
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
