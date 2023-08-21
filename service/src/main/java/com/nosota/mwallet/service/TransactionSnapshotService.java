@@ -1,9 +1,7 @@
 package com.nosota.mwallet.service;
 
-import com.nosota.mwallet.model.Transaction;
-import com.nosota.mwallet.model.TransactionSnapshot;
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.TransactionType;
+import com.nosota.mwallet.model.*;
+import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
@@ -16,10 +14,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -33,34 +28,53 @@ public class TransactionSnapshotService {
 
     private final TransactionSnapshotRepository transactionSnapshotRepository;
 
-    public TransactionSnapshotService(TransactionRepository transactionRepository, TransactionSnapshotRepository transactionSnapshotRepository) {
+    private final TransactionGroupRepository transactionGroupRepository;
+
+    public TransactionSnapshotService(TransactionRepository transactionRepository,
+                                      TransactionSnapshotRepository transactionSnapshotRepository,
+                                      TransactionGroupRepository transactionGroupRepository) {
         this.transactionRepository = transactionRepository;
         this.transactionSnapshotRepository = transactionSnapshotRepository;
+        this.transactionGroupRepository = transactionGroupRepository;
     }
 
     /**
-     * Captures daily transaction snapshots for a specified wallet.
+     * Captures a daily snapshot for a specified wallet, transferring relevant transactions to the snapshot storage.
      *
-     * <p>This method fetches all the CONFIRMED transactions associated with the specified wallet, creates
-     * snapshots of these transactions, and then deletes the original transactions. This is intended to
-     * maintain a daily snapshot history and reduce the number of transaction records in the primary transaction
-     * table.</p>
+     * <p>
+     * This method aims to reduce the load on the active transaction storage by periodically moving processed transactions
+     * to a dedicated snapshot storage.
+     * </p>
      *
-     * @param walletId The ID of the wallet for which the daily snapshot should be captured.
+     * <p>
+     * Implementation Details:
+     * 1. The method first fetches all the CONFIRMED transactions for the given wallet ID.
+     * 2. Extracts the reference IDs from these transactions to identify the associated transaction groups.
+     * 3. Only transactions that belong to CONFIRMED or REJECTED transaction groups are considered for snapshot capture.
+     * Transactions belonging to IN_PROGRESS transaction groups are ignored, ensuring that ongoing transactions
+     * are not prematurely archived.
+     * 4. Transactions that meet the criteria are then converted into transaction snapshots.
+     * 5. These snapshots are saved to the snapshot storage.
+     * 6. Upon successful transfer to the snapshot storage, the original transactions are deleted from the active storage.
+     * </p>
+     *
+     * <p>
+     * Note: Running this method periodically, such as at the end of the day, ensures the active transaction storage remains
+     * optimized for performance and that historical data is preserved.
+     * </p>
+     *
+     * @param walletId The ID of the wallet for which the snapshot needs to be captured.
+     * @throws IllegalArgumentException if the wallet ID is null.
      */
     @Transactional
     public void captureDailySnapshotForWallet(@NotNull Integer walletId) {
-        // Validate walletId
-        if (walletId == null) {
-            throw new IllegalArgumentException("Wallet ID must not be null.");
-        }
+        // 1. Fetch all the CONFIRMED and REJECTED transaction groups for the specified wallet
+        List<TransactionGroup> relevantGroups = transactionGroupRepository.findAllByStatusIn (
+                Arrays.asList(TransactionGroupStatus.CONFIRMED, TransactionGroupStatus.REJECTED));
 
-        // 1. Fetch all the CONFIRMED transactions for the specified wallet
-        List<Transaction> confirmedTransactionsForWallet = transactionRepository.findAllByWalletIdAndStatus(walletId, TransactionStatus.CONFIRMED);
-
-        // 2. Extract the reference IDs from these transactions
-        Set<UUID> referenceIdsToSnapshot = confirmedTransactionsForWallet.stream()
-                .map(Transaction::getReferenceId)
+        // 2. Extract the reference IDs from these groups
+        Set<UUID> referenceIdsToSnapshot = relevantGroups.stream()
+                .map(TransactionGroup::getId)
                 .collect(Collectors.toSet());
 
         // 3. Fetch all transactions (HOLD, RESERVE, CONFIRMED) for the specified wallet with the extracted reference IDs
@@ -78,14 +92,14 @@ public class TransactionSnapshotService {
                         transaction.getConfirmRejectTimestamp(),
                         transaction.getReferenceId(),
                         transaction.getDescription()
-                ))
-                .collect(Collectors.toList());
+                )).toList();
 
         // 5. Save the snapshots
         transactionSnapshotRepository.saveAll(snapshots);
 
         // 6. Delete the transactions from the transactions table
         transactionRepository.deleteAll(allRelatedTransactionsForWallet);
+
     }
 
     /**
@@ -102,11 +116,19 @@ public class TransactionSnapshotService {
      * in the transaction_snapshot table.
      * 3. If you ever need to review the balance evolution over time, these ledger entries will be your go-to records.
      *
+     * <p>
+     * Note: It is recommended to regularly run this method, e.g., as a part of nightly batch jobs, to ensure optimal performance of the active storage.
+     * </p>
+     *
      * @param walletId
      * @param olderThan
      */
     @Transactional
     public void archiveOldSnapshots(@NotNull Integer walletId, @NotNull LocalDateTime olderThan) {
+        // IMPORTANT: Transaction snapshot HAS NO any IN_PROGRESS transaction group.
+        // So it is safe to just move transaction to archive and don't care about
+        // transactions that are currently going. All of them keep their state in transaction table.
+
         // 1. Calculate the cumulative balance of old snapshots for the given walletId that will be archived
         String cumulativeBalanceSql = """
                     SELECT SUM(amount)
@@ -140,10 +162,10 @@ public class TransactionSnapshotService {
 
         // 3. Insert old snapshots into transaction_snapshot_archive table
         String insertIntoArchiveSql = """
-            INSERT INTO transaction_snapshot_archive
-                SELECT id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, snapshot_date, reference_id, description FROM transaction_snapshot
-                    WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
-        """;
+                    INSERT INTO transaction_snapshot_archive
+                        SELECT id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, snapshot_date, reference_id, description FROM transaction_snapshot
+                            WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
+                """;
 
         Query insertIntoArchiveQuery = entityManager.createNativeQuery(insertIntoArchiveSql);
         insertIntoArchiveQuery.setParameter("walletId", walletId);
