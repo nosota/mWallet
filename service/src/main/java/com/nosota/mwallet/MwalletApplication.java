@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class MwalletApplication implements CommandLineRunner {
-    private static Logger LOG = LoggerFactory.getLogger(MwalletApplication.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MwalletApplication.class);
 
     public static void main(String[] args) {
         LOG.info("STARTING THE APPLICATION");
@@ -17,7 +17,7 @@ public class MwalletApplication implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         LOG.info("EXECUTING : command line runner");
 
         for (int i = 0; i < args.length; ++i) {

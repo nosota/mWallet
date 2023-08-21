@@ -5,23 +5,23 @@ import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.TransactionException;
 
 import java.time.LocalDateTime;
 
 @Service
 public class WalletManagementService {
-    @Autowired
-    private WalletRepository walletRepository;
+    private final WalletRepository walletRepository;
 
-    @Autowired
-    private TransactionRepository transactionRepository;
+    private final TransactionRepository transactionRepository;
 
-    @Autowired
-    private TransactionGroupRepository transactionGroupRepository;
+    private final TransactionGroupRepository transactionGroupRepository;
+
+    public WalletManagementService(WalletRepository walletRepository, TransactionRepository transactionRepository, TransactionGroupRepository transactionGroupRepository) {
+        this.walletRepository = walletRepository;
+        this.transactionRepository = transactionRepository;
+        this.transactionGroupRepository = transactionGroupRepository;
+    }
 
     /**
      * Creates a new wallet of the specified type and persists it to the database.

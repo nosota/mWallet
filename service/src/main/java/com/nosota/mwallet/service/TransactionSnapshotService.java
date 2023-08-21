@@ -10,7 +10,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,11 +26,14 @@ public class TransactionSnapshotService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Autowired
-    private TransactionRepository transactionRepository;
+    private final TransactionRepository transactionRepository;
 
-    @Autowired
-    private TransactionSnapshotRepository transactionSnapshotRepository;
+    private final TransactionSnapshotRepository transactionSnapshotRepository;
+
+    public TransactionSnapshotService(TransactionRepository transactionRepository, TransactionSnapshotRepository transactionSnapshotRepository) {
+        this.transactionRepository = transactionRepository;
+        this.transactionSnapshotRepository = transactionSnapshotRepository;
+    }
 
     /**
      * Captures daily transaction snapshots for a specified wallet.

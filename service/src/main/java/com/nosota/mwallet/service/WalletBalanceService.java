@@ -3,7 +3,6 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,11 +10,14 @@ import java.math.BigDecimal;
 
 @Service
 public class WalletBalanceService {
-    @Autowired
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
-    @Autowired
-    private TransactionSnapshotRepository transactionSnapshotRepository;
+    private final TransactionSnapshotRepository transactionSnapshotRepository;
+
+    public WalletBalanceService(EntityManager entityManager, TransactionSnapshotRepository transactionSnapshotRepository) {
+        this.entityManager = entityManager;
+        this.transactionSnapshotRepository = transactionSnapshotRepository;
+    }
 
     /**
      * Retrieves the available balance of the specified wallet by aggregating the confirmed transaction amounts

@@ -11,7 +11,7 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "reference_id", nullable = true)
+    @Column(name = "reference_id")
     private UUID referenceId;
 
     @Column(name = "wallet_id")

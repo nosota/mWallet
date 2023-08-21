@@ -6,7 +6,6 @@ import com.nosota.mwallet.model.OwnerType;
 import com.nosota.mwallet.model.WalletOwner;
 import com.nosota.mwallet.repository.WalletOwnerRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -14,8 +13,11 @@ import java.util.Optional;
 @Service
 public class WalletOwnershipService {
 
-    @Autowired
-    private WalletOwnerRepository walletOwnerRepository;
+    private final WalletOwnerRepository walletOwnerRepository;
+
+    public WalletOwnershipService(WalletOwnerRepository walletOwnerRepository) {
+        this.walletOwnerRepository = walletOwnerRepository;
+    }
 
     /**
      * Assigns ownership to a specific wallet.

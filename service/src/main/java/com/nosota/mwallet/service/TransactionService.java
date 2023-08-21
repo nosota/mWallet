@@ -10,7 +10,6 @@ import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +19,17 @@ import java.util.UUID;
 @Service
 public class TransactionService {
 
-    @Autowired
-    private WalletService walletService;
+    private final WalletService walletService;
 
-    @Autowired
-    private TransactionGroupRepository transactionGroupRepository;
+    private final TransactionGroupRepository transactionGroupRepository;
 
-    @Autowired
-    private TransactionRepository transactionRepository;
+    private final TransactionRepository transactionRepository;
+
+    public TransactionService(WalletService walletService, TransactionGroupRepository transactionGroupRepository, TransactionRepository transactionRepository) {
+        this.walletService = walletService;
+        this.transactionGroupRepository = transactionGroupRepository;
+        this.transactionRepository = transactionRepository;
+    }
 
     /**
      * Facilitates a transfer of funds between two specified wallets.
