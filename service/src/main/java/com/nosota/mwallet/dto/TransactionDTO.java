@@ -1,6 +1,5 @@
 package com.nosota.mwallet.dto;
 
-import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionType;
 

@@ -149,7 +149,7 @@ public class TransactionHistoryService {
         fetchQuery.setFirstResult((pageNumber - 1) * pageSize); // Convert page number to 0-based index.
         fetchQuery.setMaxResults(pageSize);
 
-        List<Tuple> results = fetchQuery.getResultList();
+        @SuppressWarnings("unchecked") List<Tuple> results = fetchQuery.getResultList();
 
         List<TransactionHistoryDTO> data = results.stream()
                 .map(tuple -> {

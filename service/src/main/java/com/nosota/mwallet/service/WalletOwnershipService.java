@@ -36,14 +36,12 @@ public class WalletOwnershipService {
         WalletOwner walletOwner;
         if (existingOwnerOpt.isPresent()) {
             walletOwner = existingOwnerOpt.get();
-            walletOwner.setOwnerType(ownerType);
-            walletOwner.setOwnerRef(ownerRef);
         } else {
             walletOwner = new WalletOwner();
             walletOwner.setWalletId(walletId);
-            walletOwner.setOwnerType(ownerType);
-            walletOwner.setOwnerRef(ownerRef);
         }
+        walletOwner.setOwnerType(ownerType);
+        walletOwner.setOwnerRef(ownerRef);
 
         // Save the entity
         WalletOwner savedWalletOwner = walletOwnerRepository.save(walletOwner);
