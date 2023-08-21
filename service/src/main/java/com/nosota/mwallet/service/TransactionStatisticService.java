@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class TransactionStatisticService {
@@ -38,14 +40,16 @@ public class TransactionStatisticService {
     public List<TransactionDTO> getDailyCreditOperations(Integer walletId, LocalDateTime date) {
         LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
         List<Transaction> transactions = transactionRepository.findDailyCreditOperations(walletId, startOfDay, date);
-
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDailyCreditSnapshotOperations(walletId, startOfDay, date);
 
-        // Convert transactions to DTOs and add to the result
-        List<TransactionDTO> result = new ArrayList<>(TransactionMapper.INSTANCE.toDTOList(transactions));
-        result.addAll(TransactionSnapshotMapper.INSTANCE.toDTOList(snapshots));
-
-        return result;
+        // Performance notes:
+        // Using Stream.concat allows for efficient list merging without creating intermediary lists.
+        // The mapping is done in the stream, so there's no need for intermediary DTO lists.
+        // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
+        return Stream.concat(
+                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
+                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -62,11 +66,14 @@ public class TransactionStatisticService {
         List<Transaction> transactions = transactionRepository.findDailyDebitOperations(walletId, startOfDay, date);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDailyDebitSnapshotOperations(walletId, startOfDay, date);
 
-        // Convert transactions to DTOs and add to the result
-        List<TransactionDTO> result = new ArrayList<>(TransactionMapper.INSTANCE.toDTOList(transactions));
-        result.addAll(TransactionSnapshotMapper.INSTANCE.toDTOList(snapshots));
-
-        return result;
+        // Performance notes:
+        // Using Stream.concat allows for efficient list merging without creating intermediary lists.
+        // The mapping is done in the stream, so there's no need for intermediary DTO lists.
+        // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
+        return Stream.concat(
+                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
+                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -83,11 +90,14 @@ public class TransactionStatisticService {
         List<Transaction> transactions = transactionRepository.findCreditOperationsInRange(walletId, fromDate, toDate);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findCreditSnapshotOperationsInRange(walletId, fromDate, toDate);
 
-        // Convert transactions to DTOs and add to the result
-        List<TransactionDTO> result = new ArrayList<>(TransactionMapper.INSTANCE.toDTOList(transactions));
-        result.addAll(TransactionSnapshotMapper.INSTANCE.toDTOList(snapshots));
-
-        return result;
+        // Performance notes:
+        // Using Stream.concat allows for efficient list merging without creating intermediary lists.
+        // The mapping is done in the stream, so there's no need for intermediary DTO lists.
+        // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
+        return Stream.concat(
+                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
+                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -104,10 +114,13 @@ public class TransactionStatisticService {
         List<Transaction> transactions = transactionRepository.findDebitOperationsInRange(walletId, fromDate, toDate);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDebitSnapshotOperationsInRange(walletId, fromDate, toDate);
 
-        // Convert transactions to DTOs and add to the result
-        List<TransactionDTO> result = new ArrayList<>(TransactionMapper.INSTANCE.toDTOList(transactions));
-        result.addAll(TransactionSnapshotMapper.INSTANCE.toDTOList(snapshots));
-
-        return result;
+        // Performance notes:
+        // Using Stream.concat allows for efficient list merging without creating intermediary lists.
+        // The mapping is done in the stream, so there's no need for intermediary DTO lists.
+        // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
+        return Stream.concat(
+                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
+                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                .collect(Collectors.toList());
     }
 }
