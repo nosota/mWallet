@@ -22,6 +22,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
 
     List<Transaction> findByReferenceId(UUID referenceId);
 
+    List<Transaction> findByReferenceIdOrderByIdAsc(UUID referenceId);
+
+    List<Transaction> findByReferenceIdOrderByIdDesc(UUID referenceId);
+
+    List<Transaction> findByReferenceIdAndWalletIdOrderByIdDesc(UUID referenceId, Integer walletId);
+
     /**
      * Retrieves a transaction based on the provided wallet ID, reference ID, and one of the two specified statuses.
      *

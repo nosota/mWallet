@@ -3,6 +3,7 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.dto.TransactionMapper;
 import com.nosota.mwallet.error.InsufficientFundsException;
+import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
 import com.nosota.mwallet.model.TransactionGroupStatus;
@@ -33,6 +34,46 @@ public class TransactionService {
         this.walletService = walletService;
         this.transactionGroupRepository = transactionGroupRepository;
         this.transactionRepository = transactionRepository;
+    }
+
+    @Transactional
+    public UUID createTransactionGroup() {
+        TransactionGroup transactionGroup = new TransactionGroup();
+        transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
+        transactionGroup = transactionGroupRepository.save(transactionGroup);
+
+        UUID referenceId = transactionGroup.getId();  // This is the UUID generated
+        return referenceId;
+    }
+
+    @Transactional
+    public void confirmTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException {
+        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+
+        List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
+        for(int i = 0; i < transactions.size(); ++i) {
+            Transaction transaction = transactions.get(i);
+            walletService.confirm(transaction.getWalletId(), referenceId);
+        }
+
+        transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
+        transactionGroupRepository.save(transactionGroup);
+    }
+
+    @Transactional
+    public void rejectTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException {
+        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+
+        List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
+        for(int i = 0; i < transactions.size(); ++i) {
+            Transaction transaction = transactions.get(i);
+            walletService.reject(transaction.getWalletId(), referenceId);
+        }
+
+        transactionGroup.setStatus(TransactionGroupStatus.REJECTED);
+        transactionGroupRepository.save(transactionGroup);
     }
 
     /**
@@ -69,40 +110,23 @@ public class TransactionService {
      */
     @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public UUID transferBetweenTwoWallets(@NotNull Integer senderId, @NotNull Integer recipientId, @Positive Long amount) throws Exception {
-        // 1. Create a TransactionGroup with the status IN_PROGRESS
-        TransactionGroup transactionGroup = new TransactionGroup();
-        transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
-        transactionGroup = transactionGroupRepository.save(transactionGroup);
-
-        UUID referenceId = transactionGroup.getId();  // This is the UUID generated
+        // Create a TransactionGroup with the status IN_PROGRESS
+        UUID referenceId = createTransactionGroup();
 
         try {
-            // 2. Hold the amount from the sender's account
-            walletService.hold(senderId, amount, referenceId); // hold for deduction
-            walletService.reserve(recipientId, amount, referenceId); // hold for addition
+            // 2. Hold the amount from the sender's account for deduction
+            walletService.hold(senderId, amount, referenceId);
 
-            // 3. Confirm the transaction for the recipient
-            walletService.confirm(recipientId, referenceId);
+            // 3. Reserve the amount on recipient's account for addition
+            walletService.reserve(recipientId, amount, referenceId);
 
-            // 4. Confirm the hold on the sender's side and hold the amount for the recipient
-            walletService.confirm(senderId, referenceId);
-
-            // 5. Update the TransactionGroup status to CONFIRMED
-            transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
-            transactionGroupRepository.save(transactionGroup);
+            // 4. Update the TransactionGroup status to CONFIRMED
+            // And confirm all HOLD and RESERVE operations made under the same referenceId.
+            confirmTransactionGroup(referenceId);
         } catch (Exception e) {
-            // If any step fails, revert the previous steps using the referenceId
-
-            // Reject the transaction for the sender
-            walletService.reject(senderId, referenceId);
-
-            // Reject the transaction for the recipient (if needed)
-            walletService.reject(recipientId, referenceId);
-
-            // Update the TransactionGroup status to REJECTED
-            transactionGroup.setStatus(TransactionGroupStatus.REJECTED);
-            transactionGroupRepository.save(transactionGroup);
-
+            // 5. Update the TransactionGroup status to REJECTED
+            // And reject all HOLD and RESERVE operations made under the same referenceId.
+            rejectTransactionGroup(referenceId);
             throw e;  // Propagate the exception for further handling or to inform the user
         }
 

@@ -3,6 +3,7 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
+import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -22,23 +23,32 @@ public class WalletBalanceService {
     }
 
     /**
-     * Retrieves the available balance of the specified wallet by aggregating the confirmed transaction amounts
-     * from both the main transaction table and the snapshot table.
-     *
-     * The available balance is calculated by summing up the amounts of all 'CONFIRMED' transactions
-     * related to the wallet from both transaction sources.
+     * Retrieves the available balance of a wallet with the given ID.
      *
      * <p>
-     * This method utilizes a native SQL query that unifies data from the main transaction table and the snapshot
-     * table to efficiently compute the total confirmed amount. The result is then cast to a {@link BigDecimal}
-     * and converted to a long value.
+     * The method calculates the available balance by considering both confirmed transactions and amounts
+     * currently held for transactions that are not yet completed. The confirmed transactions include those
+     * from both the transaction and transaction_snapshot tables with a status of 'CONFIRMED'.
      * </p>
      *
-     * @param walletId The unique identifier (ID) of the wallet for which the balance is being retrieved.
-     * @return The available balance of the wallet. If no transactions or snapshots are found, returns 0.
+     * <p>
+     * To calculate the available balance:
+     * 1. Sum up the amounts of all 'CONFIRMED' transactions from both transaction and transaction_snapshot tables.
+     * 2. Subtract the sum of amounts of 'HOLD' transactions that are part of transaction groups that are still in progress.
+     * 3. Reserved amounts for ongoing transactions are ignored in this calculation as they do not affect the available balance.
+     * </p>
      *
+     * @param walletId The unique identifier (ID) of the wallet whose available balance is to be retrieved.
+     *                 Must not be {@code null}.
+     *
+     * @return The available balance of the wallet. It is the difference between the confirmed balance
+     *         and the amount on hold for incomplete transactions.
+     *
+     * @throws IllegalArgumentException If {@code walletId} is {@code null}.
      */
+    @Transactional
     public Long getAvailableBalance(@NotNull Integer walletId) {
+        // 1. Get confirmed balance.
         String sql = """
             SELECT
                 SUM(amount)
@@ -53,11 +63,20 @@ public class WalletBalanceService {
         query.setParameter("walletId", walletId);
 
         BigDecimal result = (BigDecimal) query.getSingleResult();
+        Long confirmedBalance = 0L;
         if (result != null) {
-            return result.longValueExact();
-        } else {
-            return 0L;
+            confirmedBalance = result.longValueExact();
         }
+
+        // 2. Get HOLD balance of currently running transactions. The money is not available, they are held.
+        Long ongoingTransactionBalance = getHoldAmountForIncompleteTransactionGroups(walletId);
+
+        // 3. RESERVED amounts of currently running transactions are ignored.
+
+        // 4. Calculate currently available balance.
+        Long availableBalance = confirmedBalance - ongoingTransactionBalance;
+
+        return availableBalance;
     }
 
     /**
@@ -78,5 +97,30 @@ public class WalletBalanceService {
      */
     public Long getReservedBalanceForWallet(@NotNull Integer walletId) {
         return transactionSnapshotRepository.getReservedBalanceForWallet(walletId);
+    }
+
+    protected Long getHoldAmountForIncompleteTransactionGroups(@NotNull Integer walletId) {
+        String sql = """
+            SELECT
+                SUM(t.amount)
+            FROM 
+                transaction t
+            JOIN 
+                transaction_group tg ON t.reference_id = tg.id
+            WHERE 
+                t.wallet_id = :walletId AND 
+                t.status = 'HOLD' AND
+                tg.status = 'IN_PROGRESS'
+        """;
+
+        Query query = entityManager.createNativeQuery(sql);
+        query.setParameter("walletId", walletId);
+
+        BigDecimal result = (BigDecimal) query.getSingleResult();
+        if (result != null) {
+            return - result.longValueExact(); // make the value positive
+        } else {
+            return 0L;
+        }
     }
 }
