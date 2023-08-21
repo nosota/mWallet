@@ -127,16 +127,16 @@ public class TransactionSnapshotService {
         insertLedgerQuery.setParameter("walletId", walletId);
         insertLedgerQuery.setParameter("cumulativeBalance", cumulativeBalance);
         insertLedgerQuery.setParameter("olderThan", olderThan);
-        insertLedgerQuery.setParameter("status", TransactionStatus.CONFIRMED);
-        insertLedgerQuery.setParameter("type", TransactionType.LEDGER);
+        insertLedgerQuery.setParameter("status", TransactionStatus.CONFIRMED.name());
+        insertLedgerQuery.setParameter("type", TransactionType.LEDGER.name());
 
         insertLedgerQuery.executeUpdate();
 
         // 3. Insert old snapshots into transaction_snapshot_archive table
         String insertIntoArchiveSql = """
             INSERT INTO transaction_snapshot_archive
-            SELECT * FROM transaction_snapshot
-            WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
+                SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, snapshot_date, reference_id FROM transaction_snapshot
+                    WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
         """;
 
         Query insertIntoArchiveQuery = entityManager.createNativeQuery(insertIntoArchiveSql);

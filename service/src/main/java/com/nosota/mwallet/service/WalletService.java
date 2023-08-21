@@ -57,6 +57,9 @@ public class WalletService {
         if(amount <= 0) {
             throw new IllegalArgumentException("amount must be positive.");
         }
+        if(referenceId == null) {
+            throw new IllegalArgumentException("referenceId must be not null.");
+        }
 
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
@@ -102,6 +105,9 @@ public class WalletService {
          if(amount <= 0) {
              throw new IllegalArgumentException("amount must be positive.");
          }
+        if(referenceId == null) {
+            throw new IllegalArgumentException("referenceId must be not null.");
+        }
 
         // Check if the wallet exists and if not, throw WalletNotFoundException
         Wallet senderWallet = walletRepository.findById(walletId)
@@ -139,6 +145,10 @@ public class WalletService {
      */
     @Transactional
     public Integer confirm(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
+        if(referenceId == null) {
+            throw new IllegalArgumentException("referenceId must be not null.");
+        }
+
         // Check if a HOLD transaction exists for the given referenceId
         Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId,
                 referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
@@ -183,6 +193,10 @@ public class WalletService {
      */
     @Transactional
     public Integer reject(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
+        if(referenceId == null) {
+            throw new IllegalArgumentException("referenceId must be not null.");
+        }
+
         // Check if a HOLD transaction exists for the given referenceId
         Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId,
                 referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
