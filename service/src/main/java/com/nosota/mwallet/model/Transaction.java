@@ -25,8 +25,8 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType type; // CREDIT or DEBIT
 
-    @Column(name = "hold_timestamp")
-    private LocalDateTime holdTimestamp;
+    @Column(name = "hold_reserve_timestamp")
+    private LocalDateTime holdReserveTimestamp;
 
     @Column(name = "confirm_reject_timestamp")
     private LocalDateTime confirmRejectTimestamp;
@@ -82,12 +82,12 @@ public class Transaction {
     }
 
 
-    public LocalDateTime getHoldTimestamp() {
-        return holdTimestamp;
+    public LocalDateTime getHoldReserveTimestamp() {
+        return holdReserveTimestamp;
     }
 
-    public void setHoldTimestamp(LocalDateTime holdTimestamp) {
-        this.holdTimestamp = holdTimestamp;
+    public void setHoldReserveTimestamp(LocalDateTime holdTimestamp) {
+        this.holdReserveTimestamp = holdTimestamp;
     }
 
     public LocalDateTime getConfirmRejectTimestamp() {

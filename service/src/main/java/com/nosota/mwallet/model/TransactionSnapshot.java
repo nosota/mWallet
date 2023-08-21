@@ -27,8 +27,8 @@ public class TransactionSnapshot {
     @Column(nullable = false)
     private TransactionStatus status;  // Enum of HOLD, CONFIRMED, REJECTED
 
-    @Column(name = "hold_timestamp")
-    private LocalDateTime holdTimestamp;
+    @Column(name = "hold_reserve_timestamp")
+    private LocalDateTime holdReserveTimestamp;
 
     @Column(name = "confirm_reject_timestamp")
     private LocalDateTime confirmRejectTimestamp;
@@ -43,13 +43,13 @@ public class TransactionSnapshot {
     }
 
     public TransactionSnapshot(Integer walletId, Long amount, TransactionType type,
-                               TransactionStatus status, LocalDateTime holdTimestamp,
+                               TransactionStatus status, LocalDateTime holdReserveTimestamp,
                                LocalDateTime confirmRejectTimestamp, UUID referenceId) {
         this.walletId = walletId;
         this.amount = amount;
         this.type = type;
         this.status = status;
-        this.holdTimestamp = holdTimestamp;
+        this.holdReserveTimestamp = holdReserveTimestamp;
         this.confirmRejectTimestamp = confirmRejectTimestamp;
         this.snapshotDate = LocalDateTime.now();
         this.referenceId = referenceId;
@@ -95,12 +95,12 @@ public class TransactionSnapshot {
         this.status = status;
     }
 
-    public LocalDateTime getHoldTimestamp() {
-        return holdTimestamp;
+    public LocalDateTime getHoldReserveTimestamp() {
+        return holdReserveTimestamp;
     }
 
-    public void setHoldTimestamp(LocalDateTime holdTimestamp) {
-        this.holdTimestamp = holdTimestamp;
+    public void setHoldReserveTimestamp(LocalDateTime holdTimestamp) {
+        this.holdReserveTimestamp = holdTimestamp;
     }
 
     public LocalDateTime getConfirmRejectTimestamp() {

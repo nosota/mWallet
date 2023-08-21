@@ -71,7 +71,7 @@ public class TransactionSnapshotService {
                         transaction.getAmount(),
                         transaction.getType(),
                         transaction.getStatus(),
-                        transaction.getHoldTimestamp(),
+                        transaction.getHoldReserveTimestamp(),
                         transaction.getConfirmRejectTimestamp(),
                         transaction.getReferenceId()
                 ))
@@ -137,7 +137,7 @@ public class TransactionSnapshotService {
         // 3. Insert old snapshots into transaction_snapshot_archive table
         String insertIntoArchiveSql = """
             INSERT INTO transaction_snapshot_archive
-                SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, snapshot_date, reference_id FROM transaction_snapshot
+                SELECT id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, snapshot_date, reference_id FROM transaction_snapshot
                     WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
         """;
 

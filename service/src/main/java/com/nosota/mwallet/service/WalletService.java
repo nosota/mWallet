@@ -78,7 +78,7 @@ public class WalletService {
         holdTransaction.setStatus(TransactionStatus.HOLD);
         holdTransaction.setType(TransactionType.DEBIT);
         holdTransaction.setReferenceId(referenceId);
-        holdTransaction.setHoldTimestamp(LocalDateTime.now());
+        holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
 
         Transaction savedTransaction = transactionRepository.save(holdTransaction);
 
@@ -121,7 +121,7 @@ public class WalletService {
         reserveTransaction.setStatus(TransactionStatus.RESERVE);
         reserveTransaction.setReferenceId(referenceId);
         reserveTransaction.setType(TransactionType.CREDIT);
-        reserveTransaction.setHoldTimestamp(LocalDateTime.now());
+        reserveTransaction.setHoldReserveTimestamp(LocalDateTime.now());
 
         reserveTransaction = transactionRepository.save(reserveTransaction);
         return reserveTransaction.getId();

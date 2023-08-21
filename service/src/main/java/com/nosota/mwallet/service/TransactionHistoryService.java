@@ -47,24 +47,24 @@ public class TransactionHistoryService {
         }
 
         String sql = """
-            SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description
+            SELECT id, reference_id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, description
             FROM (
                 -- Fetch from main transaction table
-                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description 
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, description 
                 FROM transaction 
                 WHERE wallet_id = :walletId
                 UNION ALL
                 -- Fetch from transaction snapshot table
-                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, null as description
                 FROM transaction_snapshot 
                 WHERE wallet_id = :walletId AND is_ledger_entry = FALSE
                 UNION ALL
                 -- Fetch from transaction snapshot archive table
-                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, null as description
                 FROM transaction_snapshot_archive 
                 WHERE wallet_id = :walletId
             ) AS combined_data
-            ORDER BY confirm_reject_timestamp DESC, hold_timestamp DESC
+            ORDER BY confirm_reject_timestamp DESC, hold_reserve_timestamp DESC
         """;
 
         Query query = entityManager.createNativeQuery(sql, Tuple.class);
@@ -83,10 +83,10 @@ public class TransactionHistoryService {
             dto.setStatus(tuple.get("status", String.class));
             Timestamp tm = tuple.get("confirm_reject_timestamp", Timestamp.class);
             if(tm == null) {
-                tm = tuple.get("hold_timestamp", Timestamp.class);
+                tm = tuple.get("hold_reserve_timestamp", Timestamp.class);
             }
             if(tm == null) {
-                throw new IllegalArgumentException("At least confirm_reject_timestamp or hold_timestamp must be not null.");
+                throw new IllegalArgumentException("At least confirm_reject_timestamp or hold_reserve_timestamp must be not null.");
             }
             dto.setTimestamp(tm);
             history.add(dto);
