@@ -39,12 +39,15 @@ public class TransactionSnapshot {
     @Column(name = "reference_id", nullable = false)
     private UUID referenceId;
 
+    @Column(name = "description")
+    private String description;
+
     public TransactionSnapshot() {
     }
 
     public TransactionSnapshot(Integer walletId, Long amount, TransactionType type,
                                TransactionStatus status, LocalDateTime holdReserveTimestamp,
-                               LocalDateTime confirmRejectTimestamp, UUID referenceId) {
+                               LocalDateTime confirmRejectTimestamp, UUID referenceId, String description) {
         this.walletId = walletId;
         this.amount = amount;
         this.type = type;
@@ -53,6 +56,7 @@ public class TransactionSnapshot {
         this.confirmRejectTimestamp = confirmRejectTimestamp;
         this.snapshotDate = LocalDateTime.now();
         this.referenceId = referenceId;
+        this.description = description;
     }
 
     public Integer getId() {
@@ -125,5 +129,13 @@ public class TransactionSnapshot {
 
     public void setReferenceId(UUID referenceId) {
         this.referenceId = referenceId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
