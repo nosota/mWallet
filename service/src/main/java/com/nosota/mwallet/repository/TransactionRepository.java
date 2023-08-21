@@ -63,25 +63,37 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     List<Transaction> findAllByWalletIdAndReferenceIdIn(Integer walletId, List<UUID> referenceIds);
 
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
-            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY t.id ASC")
     List<Transaction> findDailyCreditOperations(@Param("walletId") Integer walletId,
                                                 @Param("startOfDay") LocalDateTime startOfDay,
                                                 @Param("date") LocalDateTime date);
 
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
-            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY t.id ASC")
     List<Transaction> findDailyDebitOperations(@Param("walletId") Integer walletId,
                                                @Param("startOfDay") LocalDateTime startOfDay,
                                                @Param("date") LocalDateTime date);
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
-            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY t.id ASC")
     List<Transaction> findCreditOperationsInRange(@Param("walletId") Integer walletId,
                                                   @Param("fromDate") LocalDateTime fromDate,
                                                   @Param("toDate") LocalDateTime toDate);
 
     @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
-            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY t.id ASC")
     List<Transaction> findDebitOperationsInRange(@Param("walletId") Integer walletId,
                                                  @Param("fromDate") LocalDateTime fromDate,
                                                  @Param("toDate") LocalDateTime toDate);
+
+
+    /**
+     * Calculates the total reconciliation amount for a transaction group, which
+     * consists of the sum of both HOLD and RESERVE amounts.
+     *
+     * @param groupId The unique identifier (UUID) of the transaction group for
+     *                which the reconciliation amount needs to be calculated.
+     * @return The total reconciliation amount for the transaction group.
+     */
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.referenceId = :groupId AND (t.status = 'HOLD' OR t.status = 'RESERVE')")
+    Long getReconciliationAmountByGroupId(@Param("groupId") UUID groupId);
 }

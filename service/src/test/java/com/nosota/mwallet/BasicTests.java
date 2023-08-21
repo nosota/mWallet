@@ -2,6 +2,7 @@ package com.nosota.mwallet;
 
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.error.InsufficientFundsException;
+import com.nosota.mwallet.error.TransactionGroupZeroingOutException;
 import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
@@ -161,6 +162,49 @@ class BasicTests {
         assertThat(balance1).isEqualTo(0L);
         assertThat(balance2).isEqualTo(5L);
         assertThat(balance3).isEqualTo(6L);
+    }
+
+    @Test
+    void transferMoney3ReconciliationError() throws Exception {
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+
+        Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        Long balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(10L);
+        assertThat(balance2).isEqualTo(0L);
+        assertThat(balance3).isEqualTo(1L);
+
+        UUID referenceId = transactionService.createTransactionGroup();
+
+        try {
+            walletService.hold(wallet1Id, 10L, referenceId);
+            balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+            assertThat(balance1).isEqualTo(0L);
+
+            walletService.reserve(wallet2Id, 5L, referenceId);
+            balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+            assertThat(balance2).isEqualTo(0L);
+
+            walletService.reserve(wallet3Id, 2L, referenceId);
+            balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+            assertThat(balance3).isEqualTo(1L);
+
+            transactionService.confirmTransactionGroup(referenceId);
+        } catch (TransactionGroupZeroingOutException e) {
+            transactionService.rejectTransactionGroup(referenceId);
+        }
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(10L);
+        assertThat(balance2).isEqualTo(0L);
+        assertThat(balance3).isEqualTo(1L);
     }
 
     @Test

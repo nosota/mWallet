@@ -24,25 +24,25 @@ public interface TransactionSnapshotRepository extends JpaRepository<Transaction
     Long getReservedBalanceForWallet(@Param("walletId") Integer walletId);
 
     @Query("SELECT ts FROM TransactionSnapshot ts WHERE ts.walletId = :walletId AND ts.type = 'CREDIT' AND ts.status = 'CONFIRMED' " +
-            "AND ts.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+            "AND ts.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY ts.id ASC")
     List<TransactionSnapshot> findDailyCreditSnapshotOperations(@Param("walletId") Integer walletId,
                                                                 @Param("startOfDay") LocalDateTime startOfDay,
                                                                 @Param("date") LocalDateTime date);
 
     @Query("SELECT ts FROM TransactionSnapshot ts WHERE ts.walletId = :walletId AND ts.type = 'DEBIT' AND ts.status = 'CONFIRMED' " +
-            "AND ts.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+            "AND ts.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY ts.id ASC")
     List<TransactionSnapshot> findDailyDebitSnapshotOperations(@Param("walletId") Integer walletId,
                                                                @Param("startOfDay") LocalDateTime startOfDay,
                                                                @Param("date") LocalDateTime date);
 
     @Query("SELECT ts FROM TransactionSnapshot ts WHERE ts.walletId = :walletId AND ts.type = 'CREDIT' AND ts.status = 'CONFIRMED' " +
-            "AND ts.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+            "AND ts.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY ts.id ASC")
     List<TransactionSnapshot> findCreditSnapshotOperationsInRange(@Param("walletId") Integer walletId,
                                                                   @Param("fromDate") LocalDateTime fromDate,
                                                                   @Param("toDate") LocalDateTime toDate);
 
     @Query("SELECT ts FROM TransactionSnapshot ts WHERE ts.walletId = :walletId AND ts.type = 'DEBIT' AND ts.status = 'CONFIRMED' " +
-            "AND ts.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+            "AND ts.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY ts.id ASC")
     List<TransactionSnapshot> findDebitSnapshotOperationsInRange(@Param("walletId") Integer walletId,
                                                                  @Param("fromDate") LocalDateTime fromDate,
                                                                  @Param("toDate") LocalDateTime toDate);

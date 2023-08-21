@@ -3,6 +3,7 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.dto.TransactionMapper;
 import com.nosota.mwallet.error.InsufficientFundsException;
+import com.nosota.mwallet.error.TransactionGroupZeroingOutException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
@@ -46,10 +47,38 @@ public class TransactionService {
         return referenceId;
     }
 
+    /**
+     * Confirms a TransactionGroup given its referenceId.
+     *
+     * <p>
+     * The method carries out the following tasks in order:
+     * </p>
+     * <ol>
+     *   <li>Fetch the TransactionGroup using the provided referenceId.</li>
+     *   <li>Check for reconciliation to ensure the sum of all DEBIT and CREDIT operations within the group is zero.</li>
+     *   <li>For each Transaction in the group (sorted in descending order by their IDs), confirm the associated wallet transaction.</li>
+     *   <li>Update the status of the TransactionGroup to CONFIRMED.</li>
+     * </ol>
+     *
+     * @param referenceId The unique identifier (UUID) of the TransactionGroup that needs to be confirmed.
+     *                    Must not be {@code null}.
+     *
+     * @throws TransactionNotFoundException If no TransactionGroup is found with the provided referenceId.
+     * @throws TransactionGroupZeroingOutException If the sum of DEBIT and CREDIT operations within the group is non-zero,
+     *                                             indicating the transactions within the group are not reconciled.
+     * @throws EntityNotFoundException If no TransactionGroup is associated with the provided referenceId.
+     * @throws RuntimeException If any other unexpected error occurs during the process.
+     */
     @Transactional
-    public void confirmTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException {
+    public void confirmTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException, TransactionGroupZeroingOutException {
         TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
                 .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+
+        // All DEBIT and CREDIT operations inside the same group must be reconciled.
+        Long reconciliationAmount = transactionRepository.getReconciliationAmountByGroupId(referenceId);
+        if(reconciliationAmount != 0) {
+            throw new TransactionGroupZeroingOutException("Transaction " + referenceId + " is not reconciled.");
+        }
 
         List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
         for(int i = 0; i < transactions.size(); ++i) {
