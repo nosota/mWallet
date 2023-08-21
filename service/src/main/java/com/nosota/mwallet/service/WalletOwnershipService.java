@@ -6,11 +6,15 @@ import com.nosota.mwallet.model.OwnerType;
 import com.nosota.mwallet.model.WalletOwner;
 import com.nosota.mwallet.repository.WalletOwnerRepository;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.Optional;
 
 @Service
+@Validated
 public class WalletOwnershipService {
 
     private final WalletOwnerRepository walletOwnerRepository;
@@ -28,7 +32,7 @@ public class WalletOwnershipService {
      * @return WalletOwner entity after saving.
      */
     @Transactional
-    public WalletOwnerDTO assignOwnership(Integer walletId, OwnerType ownerType, String ownerRef) {
+    public WalletOwnerDTO assignOwnership(@NotNull Integer walletId, @NotNull OwnerType ownerType, @NotBlank String ownerRef) {
 
         // Check if a record already exists for the wallet
         Optional<WalletOwner> existingOwnerOpt = walletOwnerRepository.findByWalletId(walletId);
@@ -62,7 +66,7 @@ public class WalletOwnershipService {
      * @return An {@link Optional} containing the owner reference string if found; otherwise, an empty {@link Optional}.
      */
     @Transactional
-    public Optional<String> findOwnerRefByWalletId(Integer walletId) {
+    public Optional<String> findOwnerRefByWalletId(@NotNull Integer walletId) {
         return walletOwnerRepository.findByWalletId(walletId)
                 .map(WalletOwner::getOwnerRef);
     }

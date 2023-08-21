@@ -3,12 +3,14 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 
-
 @Service
+@Validated
 public class WalletBalanceService {
     private final EntityManager entityManager;
 
@@ -36,7 +38,7 @@ public class WalletBalanceService {
      * @return The available balance of the wallet. If no transactions or snapshots are found, returns 0.
      *
      */
-    public Long getAvailableBalance(Integer walletId) {
+    public Long getAvailableBalance(@NotNull Integer walletId) {
         String sql = """
             SELECT
                 SUM(amount)
@@ -64,7 +66,7 @@ public class WalletBalanceService {
      * @param walletId The unique identifier (ID) of the wallet.
      * @return The total of HOLD amounts. If no transactions are found, returns 0.
      */
-    public Long getHoldBalanceForWallet(Integer walletId) {
+    public Long getHoldBalanceForWallet(@NotNull Integer walletId) {
         return transactionSnapshotRepository.getHoldBalanceForWallet(walletId);
     }
 
@@ -74,7 +76,7 @@ public class WalletBalanceService {
      * @param walletId The unique identifier (ID) of the wallet.
      * @return The total of RESERVED amounts. If no transactions are found, returns 0.
      */
-    public Long getReservedBalanceForWallet(Integer walletId) {
+    public Long getReservedBalanceForWallet(@NotNull Integer walletId) {
         return transactionSnapshotRepository.getReservedBalanceForWallet(walletId);
     }
 }

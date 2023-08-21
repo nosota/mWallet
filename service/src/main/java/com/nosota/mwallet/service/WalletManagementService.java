@@ -5,11 +5,15 @@ import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 
 @Service
+@Validated
 public class WalletManagementService {
     private final WalletRepository walletRepository;
 
@@ -35,7 +39,7 @@ public class WalletManagementService {
      * @return The unique identifier (ID) of the newly created wallet.
      */
     @Transactional
-    public Integer createNewWallet(WalletType type) {
+    public Integer createNewWallet(@NotNull WalletType type) {
         Wallet newWallet = new Wallet();
         newWallet.setType(type);
         return walletRepository.save(newWallet).getId();
@@ -55,7 +59,7 @@ public class WalletManagementService {
      * @return The unique identifier (ID) of the newly created wallet with the specified initial balance.
      */
     @Transactional
-    public Integer createNewWalletWithBalance(WalletType type, Long initialBalance) {
+    public Integer createNewWalletWithBalance(@NotNull WalletType type, @PositiveOrZero Long initialBalance) {
         // Create a new wallet
         Wallet newWallet = new Wallet();
         newWallet.setType(type);

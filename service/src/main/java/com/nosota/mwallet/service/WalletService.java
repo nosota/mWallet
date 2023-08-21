@@ -10,15 +10,19 @@ import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Validated
 public class WalletService {
     private static final Logger LOG = LoggerFactory.getLogger(WalletService.class);
 
@@ -55,14 +59,7 @@ public class WalletService {
      * @throws InsufficientFundsException if the wallet does not have sufficient funds to cover the hold amount.
      */
     @Transactional
-    public Integer hold(Integer walletId, Long amount, UUID referenceId) throws WalletNotFoundException, InsufficientFundsException {
-        if(amount <= 0) {
-            throw new IllegalArgumentException("amount must be positive.");
-        }
-        if(referenceId == null) {
-            throw new IllegalArgumentException("referenceId must be not null.");
-        }
-
+    public Integer hold(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId) throws WalletNotFoundException, InsufficientFundsException {
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
@@ -102,15 +99,9 @@ public class WalletService {
      * @param referenceId A unique identifier (UUID) representing the reference or context for this reservation operation.
      * @return The unique identifier (ID) of the created transaction representing the reservation.
      * @throws WalletNotFoundException if the specified wallet ID does not correspond to an existing wallet.
-     */    @Transactional
-    public Integer reserve(Integer walletId, Long amount, UUID referenceId) throws WalletNotFoundException {
-         if(amount <= 0) {
-             throw new IllegalArgumentException("amount must be positive.");
-         }
-        if(referenceId == null) {
-            throw new IllegalArgumentException("referenceId must be not null.");
-        }
-
+     */
+    @Transactional
+    public Integer reserve(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId) throws WalletNotFoundException {
         // Check if the wallet exists and if not, throw WalletNotFoundException
         Wallet senderWallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
@@ -146,11 +137,7 @@ public class WalletService {
      *         the specified wallet ID and reference ID.
      */
     @Transactional
-    public Integer confirm(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
-        if(referenceId == null) {
-            throw new IllegalArgumentException("referenceId must be not null.");
-        }
-
+    public Integer confirm(@NotNull Integer walletId, @NotNull UUID referenceId) throws TransactionNotFoundException {
         // Check if a HOLD transaction exists for the given referenceId
         Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId,
                 referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
@@ -194,7 +181,7 @@ public class WalletService {
      *         the specified wallet ID and reference ID.
      */
     @Transactional
-    public Integer reject(Integer walletId, UUID referenceId) throws TransactionNotFoundException {
+    public Integer reject(@NotNull Integer walletId, @NotNull UUID referenceId) throws TransactionNotFoundException {
         if(referenceId == null) {
             throw new IllegalArgumentException("referenceId must be not null.");
         }
@@ -238,7 +225,7 @@ public class WalletService {
      * @return The {@link Wallet} entity corresponding to the provided ID.
      * @throws IllegalArgumentException if no wallet is found for the specified ID.
      */
-    private Wallet getWallet(Integer walletId) {
+    private Wallet getWallet(@NotNull Integer walletId) {
         return walletRepository.findById(walletId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));
     }

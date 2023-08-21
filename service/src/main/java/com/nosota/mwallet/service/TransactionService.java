@@ -10,13 +10,17 @@ import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Validated
 public class TransactionService {
 
     private final WalletService walletService;
@@ -64,7 +68,7 @@ public class TransactionService {
      * @throws Exception If any other unexpected error occurs during the transfer process.
      */
     @Transactional(Transactional.TxType.NOT_SUPPORTED)
-    public UUID transferBetweenTwoWallets(Integer senderId, Integer recipientId, Long amount) throws Exception {
+    public UUID transferBetweenTwoWallets(@NotNull Integer senderId, @NotNull Integer recipientId, @Positive Long amount) throws Exception {
         // 1. Create a TransactionGroup with the status IN_PROGRESS
         TransactionGroup transactionGroup = new TransactionGroup();
         transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
@@ -130,7 +134,7 @@ public class TransactionService {
      *
      * @throws Exception If any other unexpected error occurs during the retrieval process.
      */
-    public TransactionGroupStatus getStatusForReferenceId(UUID referenceId) {
+    public TransactionGroupStatus getStatusForReferenceId(@NotNull UUID referenceId) {
         return transactionGroupRepository.findById(referenceId)
                 .map(TransactionGroup::getStatus)
                 .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
@@ -162,7 +166,7 @@ public class TransactionService {
      * @throws DataAccessException If any issues arise during data retrieval from the underlying storage or database.
      *
      */
-    public List<TransactionDTO> getTransactionsByReferenceId(UUID referenceId) {
+    public List<TransactionDTO> getTransactionsByReferenceId(@NotNull UUID referenceId) {
         List<Transaction> transactions = transactionRepository.findByReferenceId(referenceId);
         return TransactionMapper.INSTANCE.toDTOList(transactions);
     }

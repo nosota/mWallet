@@ -10,7 +10,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Validated
 public class TransactionSnapshotService {
     @PersistenceContext
     private EntityManager entityManager;
@@ -46,7 +49,7 @@ public class TransactionSnapshotService {
      * @param walletId The ID of the wallet for which the daily snapshot should be captured.
      */
     @Transactional
-    public void captureDailySnapshotForWallet(Integer walletId) {
+    public void captureDailySnapshotForWallet(@NotNull Integer walletId) {
         // Validate walletId
         if (walletId == null) {
             throw new IllegalArgumentException("Wallet ID must not be null.");
@@ -103,7 +106,7 @@ public class TransactionSnapshotService {
      * @param olderThan
      */
     @Transactional
-    public void archiveOldSnapshots(Integer walletId, LocalDateTime olderThan) {
+    public void archiveOldSnapshots(@NotNull Integer walletId, @NotNull LocalDateTime olderThan) {
         // 1. Calculate the cumulative balance of old snapshots for the given walletId that will be archived
         String cumulativeBalanceSql = """
                     SELECT SUM(amount)

@@ -3,7 +3,10 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -12,6 +15,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Validated
 public class TransactionHistoryService {
 
     @PersistenceContext
@@ -40,12 +44,7 @@ public class TransactionHistoryService {
      *
      * @see TransactionHistoryDTO
      */
-    public List<TransactionHistoryDTO> getFullTransactionHistory(Integer walletId) {
-        // Ensure the wallet ID is valid
-        if (walletId == null) {
-            throw new IllegalArgumentException("Wallet ID cannot be null");
-        }
-
+    public List<TransactionHistoryDTO> getFullTransactionHistory(@NotNull Integer walletId) {
         String sql = """
             SELECT id, reference_id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, description
             FROM (
@@ -125,7 +124,7 @@ public class TransactionHistoryService {
      * @see PagedResponse
      * @see TransactionHistoryDTO
      */
-    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(Integer walletId, int pageNumber, int pageSize) {
+    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize) {
         String baseSql = """
             SELECT
                 id, wallet_id, type, amount, status, confirm_reject_timestamp AS timestamp

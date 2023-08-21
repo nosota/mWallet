@@ -48,10 +48,16 @@
             <artifactId>postgresql</artifactId>
         </dependency>
 
-        <!-- Spring Boot Starter Data JPA (if you haven't added it yet) -->
+        <!-- Spring Boot Starter Data JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Starter Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <!-- MapStruct -->

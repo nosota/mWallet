@@ -7,8 +7,10 @@ import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Validated
 public class TransactionStatisticService {
     private final TransactionRepository transactionRepository;
     private final TransactionSnapshotRepository transactionSnapshotRepository;
@@ -36,7 +39,7 @@ public class TransactionStatisticService {
      * @param date     The date for which the statistics are to be retrieved.
      * @return A list of object arrays representing the credit operations.
      */
-    public List<TransactionDTO> getDailyCreditOperations(Integer walletId, LocalDateTime date) {
+    public List<TransactionDTO> getDailyCreditOperations(@NotNull Integer walletId, @NotNull LocalDateTime date) {
         LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
         List<Transaction> transactions = transactionRepository.findDailyCreditOperations(walletId, startOfDay, date);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDailyCreditSnapshotOperations(walletId, startOfDay, date);
@@ -60,7 +63,7 @@ public class TransactionStatisticService {
      * @param date     The date for which the statistics are to be retrieved.
      * @return A list of object arrays representing the debit operations.
      */
-    public List<TransactionDTO> getDailyDebitOperations(Integer walletId, LocalDateTime date) {
+    public List<TransactionDTO> getDailyDebitOperations(@NotNull Integer walletId, @NotNull LocalDateTime date) {
         LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
         List<Transaction> transactions = transactionRepository.findDailyDebitOperations(walletId, startOfDay, date);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDailyDebitSnapshotOperations(walletId, startOfDay, date);
@@ -85,7 +88,7 @@ public class TransactionStatisticService {
      * @param toDate   The end date of the range (inclusive).
      * @return A list of object arrays representing the credit operations.
      */
-    public List<TransactionDTO> getCreditOperationsInRange(Integer walletId, LocalDateTime fromDate, LocalDateTime toDate) {
+    public List<TransactionDTO> getCreditOperationsInRange(@NotNull Integer walletId, @NotNull LocalDateTime fromDate, @NotNull LocalDateTime toDate) {
         List<Transaction> transactions = transactionRepository.findCreditOperationsInRange(walletId, fromDate, toDate);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findCreditSnapshotOperationsInRange(walletId, fromDate, toDate);
 
@@ -109,7 +112,7 @@ public class TransactionStatisticService {
      * @param toDate   The end date of the range (inclusive).
      * @return A list of object arrays representing the debit operations.
      */
-    public List<TransactionDTO> getDebitOperationsInRange(Integer walletId, LocalDateTime fromDate, LocalDateTime toDate) {
+    public List<TransactionDTO> getDebitOperationsInRange(@NotNull Integer walletId, @NotNull LocalDateTime fromDate, @NotNull LocalDateTime toDate) {
         List<Transaction> transactions = transactionRepository.findDebitOperationsInRange(walletId, fromDate, toDate);
         List<TransactionSnapshot> snapshots = transactionSnapshotRepository.findDebitSnapshotOperationsInRange(walletId, fromDate, toDate);
 
