@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,4 +56,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
      * @return A list of transactions matching the specified wallet ID and contained within the set of reference IDs.
      */
     List<Transaction> findAllByWalletIdAndReferenceIdIn(Integer walletId, List<UUID> referenceIds);
+
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
+            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+    List<Transaction> findDailyCreditOperations(@Param("walletId") Integer walletId,
+                                                @Param("startOfDay") LocalDateTime startOfDay,
+                                                @Param("date") LocalDateTime date);
+
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
+            "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date")
+    List<Transaction> findDailyDebitOperations(@Param("walletId") Integer walletId,
+                                               @Param("startOfDay") LocalDateTime startOfDay,
+                                               @Param("date") LocalDateTime date);
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
+            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+    List<Transaction> findCreditOperationsInRange(@Param("walletId") Integer walletId,
+                                                  @Param("fromDate") LocalDateTime fromDate,
+                                                  @Param("toDate") LocalDateTime toDate);
+
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
+            "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate")
+    List<Transaction> findDebitOperationsInRange(@Param("walletId") Integer walletId,
+                                                 @Param("fromDate") LocalDateTime fromDate,
+                                                 @Param("toDate") LocalDateTime toDate);
 }

@@ -25,9 +25,6 @@ public class TransactionSnapshotTest {
     private TransactionSnapshotService transactionSnapshotService;
 
     @Autowired
-    private WalletService walletService;
-
-    @Autowired
     private WalletBalanceService walletBalanceService;
 
     @Autowired

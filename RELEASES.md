@@ -1,3 +1,34 @@
+## **Wallet System - Release Notes v1.0.1**
+
+### **Date:** 21.08.2023
+
+### **Overview:**
+
+1. **Introduced `TransactionStatisticService`:** A new service aimed at providing detailed statistics related to
+   transactions.
+
+    - **getDailyCreditOperations:** This method retrieves all credit operations for a specified wallet ID on a given
+      day.
+
+    - **getDailyDebitOperations:** This method fetches all debit operations for a particular wallet ID on a specified
+      date.
+
+    - **getCreditOperationsInRange:** A new functionality that enables users to obtain credit operations for a specific
+      wallet ID within a given date range.
+
+    - **getDebitOperationsInRange:** This method allows users to get debit operations for a designated wallet ID across
+      a defined date range.
+
+#### Notes:
+
+- These new methods ensure only CONFIRMED transactions are taken into account, ensuring accurate and reliable
+  statistics.
+
+- Archive tables have been purposefully excluded from statistics due to potential performance impacts and their
+  infrequent usage.
+
+---
+
 ## **Wallet System - Release Notes v1.0.0**
 
 ### **Date:** 21.08.2023
