@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,20 +47,20 @@ public class TransactionHistoryService {
         }
 
         String sql = """
-            SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description
+            SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description
             FROM (
                 -- Fetch from main transaction table
-                SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description 
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, description 
                 FROM transaction 
                 WHERE wallet_id = :walletId
                 UNION ALL
                 -- Fetch from transaction snapshot table
-                SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
                 FROM transaction_snapshot 
                 WHERE wallet_id = :walletId AND is_ledger_entry = FALSE
                 UNION ALL
                 -- Fetch from transaction snapshot archive table
-                SELECT id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
+                SELECT id, reference_id, wallet_id, type, amount, status, hold_timestamp, confirm_reject_timestamp, null as description
                 FROM transaction_snapshot_archive 
                 WHERE wallet_id = :walletId
             ) AS combined_data
@@ -75,7 +76,7 @@ public class TransactionHistoryService {
         List<TransactionHistoryDTO> history = new ArrayList<>();
         for (Tuple tuple : results) {
             TransactionHistoryDTO dto = new TransactionHistoryDTO();
-            dto.setId(tuple.get("id", Integer.class));
+            dto.setReferenceId(tuple.get("reference_id", UUID.class));
             dto.setWalletId(tuple.get("wallet_id", Integer.class));
             dto.setType(tuple.get("type", String.class));
             dto.setAmount(tuple.get("amount", Long.class));
@@ -153,7 +154,7 @@ public class TransactionHistoryService {
         List<TransactionHistoryDTO> data = results.stream()
                 .map(tuple -> {
                     TransactionHistoryDTO dto = new TransactionHistoryDTO();
-                    dto.setId(tuple.get("id", Integer.class));
+                    dto.setReferenceId(tuple.get("reference_id", UUID.class));
                     dto.setWalletId(tuple.get("wallet_id", Integer.class));
                     dto.setType(tuple.get("type", String.class));
                     dto.setAmount(tuple.get("amount", Long.class));

@@ -1,21 +1,22 @@
 package com.nosota.mwallet.dto;
 
 import java.sql.Timestamp;
+import java.util.UUID;
 
 public class TransactionHistoryDTO {
-    private Integer id; // transaction ID or snapshot ID (just primary key) and they ar not equal to each other even for the same transaction.
+    private UUID referenceId;
     private Integer walletId;
     private String type; // e.g., 'CREDIT', 'DEBIT'
     private Long amount;
     private String status; // e.g., 'HOLD', 'CONFIRMED', 'REJECTED'
     private Timestamp timestamp; // this could be either hold_timestamp or confirm_reject_timestamp
 
-    public Integer getId() {
-        return id;
+    public UUID getReferenceId() {
+        return referenceId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setReferenceId(UUID referenceId) {
+        this.referenceId = referenceId;
     }
 
     public Integer getWalletId() {
@@ -61,10 +62,9 @@ public class TransactionHistoryDTO {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof TransactionHistoryDTO that)) return false;
 
-        TransactionHistoryDTO that = (TransactionHistoryDTO) o;
-
+        if (!referenceId.equals(that.referenceId)) return false;
         if (!walletId.equals(that.walletId)) return false;
         if (!type.equals(that.type)) return false;
         if (!amount.equals(that.amount)) return false;
@@ -74,7 +74,8 @@ public class TransactionHistoryDTO {
 
     @Override
     public int hashCode() {
-        int result = walletId.hashCode();
+        int result = referenceId.hashCode();
+        result = 31 * result + walletId.hashCode();
         result = 31 * result + type.hashCode();
         result = 31 * result + amount.hashCode();
         result = 31 * result + status.hashCode();

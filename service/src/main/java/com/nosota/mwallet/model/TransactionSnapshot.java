@@ -3,6 +3,7 @@ package com.nosota.mwallet.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transaction_snapshot")
@@ -35,12 +36,15 @@ public class TransactionSnapshot {
     @Column(name = "snapshot_date", nullable = false)
     private LocalDateTime snapshotDate;
 
+    @Column(name = "reference_id", nullable = false)
+    private UUID referenceId;
+
     public TransactionSnapshot() {
     }
 
     public TransactionSnapshot(Integer walletId, Long amount, TransactionType type,
                                TransactionStatus status, LocalDateTime holdTimestamp,
-                               LocalDateTime confirmRejectTimestamp) {
+                               LocalDateTime confirmRejectTimestamp, UUID referenceId) {
         this.walletId = walletId;
         this.amount = amount;
         this.type = type;
@@ -48,6 +52,7 @@ public class TransactionSnapshot {
         this.holdTimestamp = holdTimestamp;
         this.confirmRejectTimestamp = confirmRejectTimestamp;
         this.snapshotDate = LocalDateTime.now();
+        this.referenceId = referenceId;
     }
 
     public Integer getId() {
@@ -112,5 +117,13 @@ public class TransactionSnapshot {
 
     public void setSnapshotDate(LocalDateTime snapshotDate) {
         this.snapshotDate = snapshotDate;
+    }
+
+    public UUID getReferenceId() {
+        return referenceId;
+    }
+
+    public void setReferenceId(UUID referenceId) {
+        this.referenceId = referenceId;
     }
 }

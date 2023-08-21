@@ -70,7 +70,8 @@ public class TransactionSnapshotService {
                         transaction.getType(),
                         transaction.getStatus(),
                         transaction.getHoldTimestamp(),
-                        transaction.getConfirmRejectTimestamp()
+                        transaction.getConfirmRejectTimestamp(),
+                        transaction.getReferenceId()
                 ))
                 .collect(Collectors.toList());
 
@@ -131,7 +132,20 @@ public class TransactionSnapshotService {
 
         insertLedgerQuery.executeUpdate();
 
-        // 3. Delete the old snapshots
+        // 3. Insert old snapshots into transaction_snapshot_archive table
+        String insertIntoArchiveSql = """
+            INSERT INTO transaction_snapshot_archive
+            SELECT * FROM transaction_snapshot
+            WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
+        """;
+
+        Query insertIntoArchiveQuery = entityManager.createNativeQuery(insertIntoArchiveSql);
+        insertIntoArchiveQuery.setParameter("walletId", walletId);
+        insertIntoArchiveQuery.setParameter("olderThan", olderThan);
+
+        insertIntoArchiveQuery.executeUpdate();
+
+        // 4. Delete the old snapshots from transaction_snapshot table
         String deleteOldSnapshotsSql = """
                     DELETE FROM transaction_snapshot
                         WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE

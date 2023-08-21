@@ -11,3 +11,6 @@ ALTER TABLE transaction
     ADD COLUMN reference_id UUID,
     ADD FOREIGN KEY (reference_id) REFERENCES transaction_group(id);
 
+ALTER TABLE transaction_snapshot
+    ADD COLUMN reference_id UUID,
+    ADD FOREIGN KEY (reference_id) REFERENCES transaction_group(id);
