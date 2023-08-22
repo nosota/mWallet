@@ -234,6 +234,50 @@ table, doing so might compromise the system's scalability, performance, and clar
 
 ---
 
+### Integer Representation in Financial Systems: The Case for Cents Over Decimals
+
+Using integers (like cents) in a Wallet System instead of floating-point types such as `BigDecimal` or `double` offers
+several advantages, particularly in terms of precision, performance, and simplicity. Here's a breakdown of the reasons:
+
+1. **Precision and Accuracy**:
+   - **Floating Point Issues**: Both `float` and `double` data types in many programming languages use binary
+     floating-point arithmetic which can lead to precision errors. For example, simple arithmetic operations like
+     subtraction or addition might not result in the expected value due to rounding errors.
+   - **Exact Arithmetic with Integers**: When representing monetary values as integers (e.g., cents), all arithmetic
+     operations are exact, avoiding the pitfalls of floating-point arithmetic.
+
+2. **Simplicity**:
+   - **Easier Arithmetic**: With integer-based representation, standard arithmetic operations are straightforward. You
+     won't need to handle the complexities that come with floating-point arithmetic.
+   - **Clearer Database Representation**: When storing values in databases, using an integer field is more
+     straightforward than handling decimal points. You can always convert to a decimal representation when displaying
+     the value to end users.
+
+3. **Performance**:
+   - **Optimized Arithmetic**: Integer arithmetic operations are typically faster and more optimized than their
+     floating-point counterparts, especially on certain hardware.
+   - **Storage Efficiency**: Integers can be more storage-efficient, especially when considering the additional
+     precision and scale metadata needed for exact decimal types like `BigDecimal`.
+
+4. **Consistency Across Platforms**:
+   - **Uniform Behavior**: Integers have consistent behavior across different platforms and programming languages. In
+     contrast, floating-point implementations might vary.
+   - **Database Portability**: Different databases handle floating-point numbers in varying ways. Using integers ensures
+     consistency across different database systems.
+
+5. **Avoid Compounding Errors**:
+   - Over time, repeated calculations using `double` or `float` can introduce and compound rounding errors. Using
+     integer values helps prevent the accumulation of these errors.
+
+6. **Industry Standard**:
+   - Many financial systems and standards, like ISO 4217 which defines currency codes, advocate for the use of minor
+     units (e.g., cents for USD, pence for GBP) to ensure precision.
+
+In summary, when dealing with money in software systems, it's crucial to maintain precision, avoid rounding errors, and
+ensure consistency. Using integer representations, like cents, is a proven way to achieve these goals.
+
+---
+
 ### Entity Relationship Diagram (ERD):
 
 Note: This is a simplified representation and might not capture all the intricate relationships and constraints of the
