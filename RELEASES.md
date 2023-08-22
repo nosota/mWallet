@@ -1,3 +1,19 @@
+## **Wallet System - Release Notes v1.0.3**
+
+### **Date:** 22.08.2023
+
+### **Overview:**
+
+1. Develop a reference table keeping correspondence between LEDGER record and transaction groups moved to archive.
+2. Creating empty wallet must not create zero credit operation in transaction table.
+3. getPaginatedTransactionHistory should use either hold_release_timestamp or confirm_reject_timestamp depending if they NULL or not. The method needs to use non nullable value for returning 'timestamp'.
+4. Wallet needs a description.
+5. Describe why using LEDGER records need using intermediate transaction_snapshot table and what is keys differences between goals of using two tables: transaction_snapshot and transaction_snapshot_archive.
+6. Develop getRecentTransactions(walletId) that returns all transactions from transaction and snapshot tables.
+7. Developed additional tests for creating transaction snapshots and archives.
+
+---
+
 ## **Wallet System - Release Notes v1.0.2**
 
 ### **Date:** 22.08.2023
