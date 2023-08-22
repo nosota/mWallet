@@ -2,12 +2,9 @@ package com.nosota.mwallet;
 
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
-import com.nosota.mwallet.model.Transaction;
-import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionType;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +14,7 @@ import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest

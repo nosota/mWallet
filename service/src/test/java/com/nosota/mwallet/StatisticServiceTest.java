@@ -2,7 +2,10 @@ package com.nosota.mwallet;
 
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.model.WalletType;
-import com.nosota.mwallet.service.*;
+import com.nosota.mwallet.service.TransactionService;
+import com.nosota.mwallet.service.TransactionStatisticService;
+import com.nosota.mwallet.service.WalletBalanceService;
+import com.nosota.mwallet.service.WalletManagementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
