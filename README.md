@@ -32,7 +32,7 @@ efficiency and accuracy.
 
 3. **Transaction Snapshot Table**:
     - Stores periodic snapshots of transactions.
-    - Includes a special ledger entry to represent the cumulative balance, ensuring efficient balance lookups.
+    - Includes a special ``ledger`` entry to represent the cumulative balance, ensuring efficient balance lookups.
 
 4. **Transaction Archive Table**:
     - Used for archiving older transactions, ensuring the main transaction table remains performant.
@@ -60,7 +60,7 @@ efficiency and accuracy.
 #### Caveats and Solutions:
 
 1. **Performance**:
-    - Summing transactions can slow down as data grows. Periodic balance snapshots or ledger entries in the transaction
+    - Summing transactions can slow down as data grows. Periodic balance snapshots or ``ledger`` entries in the transaction
       snapshot table help in speeding up balance calculations.
     - Archiving mechanism moves older transactions to an archive table, maintaining the performance of the main
       transaction table.
@@ -106,7 +106,7 @@ Specifically, the methods responsible are:
 
 - `captureDailySnapshot(Integer walletId)`: Creates a snapshot of transactions for the specified wallet.
 - `archiveOldSnapshots(Integer walletId, LocalDateTime olderThan)`: Archives transactions older than a specified date
-  for the given wallet and provides ledger entries for streamlined balance computation.
+  for the given wallet and provides ``ledger`` entries for streamlined balance computation.
 
 Setting up the invocation of these methods should be managed externally, based on the specific requirements and
 operational dynamics of the solution leveraging this wallet system. It allows for a high degree of customization,
@@ -158,9 +158,79 @@ existing functionalities.
 
 4. **Security & Verification**: Given that complex transfers might necessitate additional verification and security
    checks:
-    - Implement multi-factor authentication or OTPs where required.
     - Ensure all transaction requests are validated against predefined thresholds.
     - Employ rigorous auditing to track every transaction change, especially in high-value transfers.
+
+5. **Reconciliation Balance**: Reconciliation is a fundamental accounting process that ensures the actual money spent or earned matches the money leaving or entering the system. Money should not appear out of nowhere or disappear into nowhere.
+   In the Wallet System the resulting balance represents the cumulative initial balance of all wallets created within the system.
+   Internal money transfers between wallets should not affect the reconciliation balance, ensuring its constancy
+   throughout the system's lifecycle. It's important to:
+   - Ensure after any group of transactions the system reconciliation balance stays the same.
+   - Regularly monitor the system reconciliation balance.
+
+---
+
+### The Interplay Between the Tables:
+
+The `transaction` table is always the primary source of truth. However, over time, querying it directly can become
+computationally intensive. This is where the `transaction_snapshot` table comes in, offering an optimized and summarized
+view for frequent operational tasks.
+
+As the `transaction_snapshot` table grows, to maintain its performance, older records are moved to the
+`transaction_snapshot_archive` table.
+
+#### How the Tables Work Together:
+
+1. **Real-time Transaction Processing**: When a transaction is initiated, it gets recorded in the `transaction` table.
+   This table provides the most current state of all transactions, whether they are completed, pending, or in any other
+   state. The data here is always up-to-date and can be used for immediate operations and verifications.
+
+2. **Periodic Snapshots for Performance**: Since ``transaction`` table is constantly growing, periodically (this can be at the end of a day, week, or any other frequency
+   depending on the system's requirements), the system takes a snapshot of the transactions from the `transaction` table
+   and updates the `transaction_snapshot` table. The `transaction_snapshot` table keeps recently completed transactions.
+   All transactions in this table are immutable. Transactions which are in progress will never be moved to `transaction_snapshot` table.
+
+3. **Archiving for Long-term Storage**: As transactions in the `transaction_snapshot` table get older and are no longer actively
+   needed for real-time operations, they can be moved to the `transaction_snapshot_archive` table. This table acts as a long-term
+   storage solution, ensuring that the `transaction_snapshot` table remains optimized for the most current data.
+   During the archiving process, an essential performance optimization occurs: the transactions being archived are consolidated
+   into a single `ledger entry` that summarizes their balance. Periodically creating these summary ledger entries in the
+   `transaction_snapshot` table enhances balance lookup efficiency. Instead of aggregating numerous individual transactions,
+   the system can swiftly reference the most recent `ledger entry`.
+
+
+#### Why cannot omit `transaction_snapshot` table and create `ledger entries` directly in `transaction` table?
+
+Creating `ledger entries` directly in the `transaction` table, rather than using an intermediary `transaction_snapshot`
+table, might seem like a straightforward approach. However, there are compelling reasons to maintain a separate snapshot
+table for ledger entries:
+
+1. **Performance**: As transactions increase in number, querying the `transaction` table for balance calculations would
+   become increasingly slow. A separate snapshot table enables you to periodically condense the data. By taking a
+   snapshot and storing it separately, you avoid repeatedly summing large numbers of rows.
+
+2. **Simplicity in Real-time Processing**: The `transaction` table is designed for real-time processing. Adding ledger
+   entries here might complicate the transaction processing logic. Keeping them separate ensures that the transaction
+   processing remains clean and optimized.
+
+3. **Historical Data Preservation**: Over time, the `transaction` table would grow tremendously, especially in
+   high-transaction environments. Moving older transactions to an archive and maintaining a snapshot ensures that while
+   historical data is preserved, it doesn't impede the performance of real-time operations.
+
+4. **Data Integrity & Consistency**: The `transaction` table is frequently written to and updated, and thus has a higher
+   potential for inconsistencies or conflicts in a distributed environment. Ledger entries in the `transaction_snapshot`
+   table can be created in a controlled manner, ensuring data integrity.
+
+5. **Isolation of Operational and Analytical Workloads**: Real-time transaction processing (Operational) and balance
+   calculation or report generation (Analytical) are two distinct workloads. By using a separate `transaction_snapshot`
+   table, these workloads are isolated, ensuring neither impacts the performance of the other.
+
+6. **Database Optimization**: Database tables can be optimized based on their access patterns. For
+   instance, `transaction` table might be optimized for write-heavy operations, while `transaction_snapshot` can be
+   optimized for reads.
+
+In essence, while it's technically possible to mix ledger entries with real-time transactions in the `transaction`
+table, doing so might compromise the system's scalability, performance, and clarity of design.
 
 ---
 
@@ -228,7 +298,3 @@ actual database. Ensure to review and adjust as per the detailed requirements an
 | updated_at      |
 +-----------------+
 ```
-
----
-
-
