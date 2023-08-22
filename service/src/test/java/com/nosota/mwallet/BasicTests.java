@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -255,5 +256,119 @@ class BasicTests {
                     item.getStatus());
             System.out.println(formatted);
         });
+    }
+
+    @Test
+    void transferMoney3PositiveAndSnapshot() throws Exception {
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+
+        Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        Long balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(10L);
+        assertThat(balance2).isEqualTo(0L);
+        assertThat(balance3).isEqualTo(1L);
+
+        UUID referenceId = transactionService.createTransactionGroup();
+
+        walletService.hold(wallet1Id, 10L, referenceId);
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        assertThat(balance1).isEqualTo(0L);
+
+        walletService.reserve(wallet2Id, 5L, referenceId);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        assertThat(balance2).isEqualTo(0L);
+
+        walletService.reserve(wallet3Id, 5L, referenceId);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+        assertThat(balance3).isEqualTo(1L);
+
+        transactionService.confirmTransactionGroup(referenceId);
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(0L);
+        assertThat(balance2).isEqualTo(5L);
+        assertThat(balance3).isEqualTo(6L);
+
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet1Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet2Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet3Id);
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(0L);
+        assertThat(balance2).isEqualTo(5L);
+        assertThat(balance3).isEqualTo(6L);
+    }
+
+    @Test
+    void transferMoney3PositiveAndSnapshotAndArchive() throws Exception {
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+
+        Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        Long balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(10L);
+        assertThat(balance2).isEqualTo(0L);
+        assertThat(balance3).isEqualTo(1L);
+
+        UUID referenceId = transactionService.createTransactionGroup();
+
+        walletService.hold(wallet1Id, 10L, referenceId);
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        assertThat(balance1).isEqualTo(0L);
+
+        walletService.reserve(wallet2Id, 5L, referenceId);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        assertThat(balance2).isEqualTo(0L);
+
+        walletService.reserve(wallet3Id, 5L, referenceId);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+        assertThat(balance3).isEqualTo(1L);
+
+        transactionService.confirmTransactionGroup(referenceId);
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(0L);
+        assertThat(balance2).isEqualTo(5L);
+        assertThat(balance3).isEqualTo(6L);
+
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet1Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet2Id);
+        transactionSnapshotService.captureDailySnapshotForWallet(wallet3Id);
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(0L);
+        assertThat(balance2).isEqualTo(5L);
+        assertThat(balance3).isEqualTo(6L);
+
+        transactionSnapshotService.archiveOldSnapshots(wallet1Id, LocalDateTime.now());
+        transactionSnapshotService.archiveOldSnapshots(wallet2Id, LocalDateTime.now());
+        transactionSnapshotService.archiveOldSnapshots(wallet3Id, LocalDateTime.now());
+
+        balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
+        balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
+        balance3 = walletBalanceService.getAvailableBalance(wallet3Id);
+
+        assertThat(balance1).isEqualTo(0L);
+        assertThat(balance2).isEqualTo(5L);
+        assertThat(balance3).isEqualTo(6L);
     }
 }
