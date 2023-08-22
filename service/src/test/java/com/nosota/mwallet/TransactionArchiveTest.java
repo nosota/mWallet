@@ -1,16 +1,16 @@
 package com.nosota.mwallet;
+
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
