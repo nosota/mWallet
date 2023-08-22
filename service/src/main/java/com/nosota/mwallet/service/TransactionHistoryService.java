@@ -125,16 +125,18 @@ public class TransactionHistoryService {
      * @see TransactionHistoryDTO
      */
     public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize) {
+
+        // SQL function COALESCE returns the first non-null value in a list.
         String baseSql = """
             SELECT
-                id, wallet_id, type, amount, status, confirm_reject_timestamp AS timestamp
+                id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
             FROM
                 transaction
             WHERE
                 wallet_id = :walletId
             UNION
             SELECT
-                id, wallet_id, type, amount, status, confirm_reject_timestamp AS timestamp
+                id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
             FROM
                 transaction_snapshot
             WHERE

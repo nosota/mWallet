@@ -6,6 +6,7 @@ import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -69,22 +70,24 @@ public class WalletManagementService {
         newWallet.setDescription(description);
         newWallet = walletRepository.save(newWallet);
 
-        // Create an initial transaction for the wallet
-        Transaction initialTransaction = new Transaction();
-        initialTransaction.setAmount(initialBalance);
-        initialTransaction.setWalletId(newWallet.getId());
-        initialTransaction.setStatus(TransactionStatus.CONFIRMED);
-        initialTransaction.setType(TransactionType.CREDIT); // assuming it's a credit transaction for the initial balance
-        initialTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
-        initialTransaction.setDescription("New wallet with initial balance");
+        if (initialBalance > 0) {
+            // Create an initial transaction for the wallet.
+            Transaction initialTransaction = new Transaction();
+            initialTransaction.setAmount(initialBalance);
+            initialTransaction.setWalletId(newWallet.getId());
+            initialTransaction.setStatus(TransactionStatus.CONFIRMED);
+            initialTransaction.setType(TransactionType.CREDIT); // assuming it's a credit transaction for the initial balance
+            initialTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+            initialTransaction.setDescription("New wallet with initial balance");
 
-        // Generate a reference ID for the initial transaction
-        TransactionGroup transactionGroup = new TransactionGroup();
-        transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
-        transactionGroup = transactionGroupRepository.save(transactionGroup);
-        initialTransaction.setReferenceId(transactionGroup.getId());
+            // Generate a reference ID for the initial transaction.
+            TransactionGroup transactionGroup = new TransactionGroup();
+            transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
+            transactionGroup = transactionGroupRepository.save(transactionGroup);
+            initialTransaction.setReferenceId(transactionGroup.getId());
 
-        transactionRepository.save(initialTransaction);
+            transactionRepository.save(initialTransaction);
+        }
 
         return newWallet.getId();
     }
