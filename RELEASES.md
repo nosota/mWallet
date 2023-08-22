@@ -1,3 +1,19 @@
+## **Wallet System - Release Notes v1.0.2**
+
+### **Date:** 22.08.2023
+
+### **Overview:**
+
+1. Develop getReconciliationBalanceOfAllConfirmedGroups() that retrieves the reconciliation balance for the entire system.
+2. captureDailySnapshotForWallet() must not transfer transactions belong to transaction groups in IN_PROGRESS status.
+3. confirmTransactionGroup() must calculate reconciliation of all transactions included in it. If the reconciliation amount is not zero, it should throws TransactionGroupZeroingOutException.
+4. Develop createTransactionGroup(), confirmTransactionGroup() and rejectTransactionGroup()
+5. getAvailableBalance must take into account HOLD amounts of incomplete transactions
+6. Use validation framework to validate service args.
+7. created_at and updated_at are not automatically updated in transaction_group table
+
+---
+
 ## **Wallet System - Release Notes v1.0.1**
 
 ### **Date:** 21.08.2023
