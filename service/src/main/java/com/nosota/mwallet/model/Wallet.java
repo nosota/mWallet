@@ -11,6 +11,8 @@ public class Wallet {
     @Enumerated(EnumType.STRING)
     private WalletType type;
 
+    private String description; // optional, nullable
+
     public Integer getId() {
         return id;
     }
@@ -25,5 +27,13 @@ public class Wallet {
 
     public void setType(WalletType type) {
         this.type = type;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

@@ -36,12 +36,14 @@ public class WalletManagementService {
      * </p>
      *
      * @param type The type of the wallet to be created, defined as an enumeration {@link WalletType}.
+     * @param description Optional description of the wallet, value can be null.
      * @return The unique identifier (ID) of the newly created wallet.
      */
     @Transactional
-    public Integer createNewWallet(@NotNull WalletType type) {
+    public Integer createNewWallet(@NotNull WalletType type, String description) {
         Wallet newWallet = new Wallet();
         newWallet.setType(type);
+        newWallet.setDescription(description);
         return walletRepository.save(newWallet).getId();
     }
 
@@ -55,14 +57,16 @@ public class WalletManagementService {
      * </p>
      *
      * @param type          The type of the wallet to be created, defined as an enumeration {@link WalletType}.
+     * @param description   Optional description of the wallet, value can be null.
      * @param initialBalance The starting balance to be set for the newly created wallet. This should be a non-negative value.
      * @return The unique identifier (ID) of the newly created wallet with the specified initial balance.
      */
     @Transactional
-    public Integer createNewWalletWithBalance(@NotNull WalletType type, @PositiveOrZero Long initialBalance) {
+    public Integer createNewWalletWithBalance(@NotNull WalletType type, String description, @PositiveOrZero Long initialBalance) {
         // Create a new wallet
         Wallet newWallet = new Wallet();
         newWallet.setType(type);
+        newWallet.setDescription(description);
         newWallet = walletRepository.save(newWallet);
 
         // Create an initial transaction for the wallet

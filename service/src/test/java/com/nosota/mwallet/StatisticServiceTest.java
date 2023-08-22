@@ -31,8 +31,8 @@ public class StatisticServiceTest {
     @Test
     public void dailyStat() throws Exception {
         // Create initial wallets
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, INITIAL_BALANCE);
-        Integer wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, INITIAL_BALANCE);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "dailyStat", INITIAL_BALANCE);
+        Integer wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, "dailyStat", INITIAL_BALANCE);
 
         transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 100L);
         transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 100L);
