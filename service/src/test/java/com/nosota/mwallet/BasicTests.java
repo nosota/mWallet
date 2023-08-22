@@ -41,8 +41,8 @@ class BasicTests {
 
     @Test
     void createWallets() {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "createWallets",10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "createWallets");
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -53,8 +53,8 @@ class BasicTests {
 
     @Test
     void transferMoney2Positive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney2Positive", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney2Positive");
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -85,9 +85,9 @@ class BasicTests {
 
     @Test
     void transferMoney3Negative() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Negative", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3Negative");
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Negative", 1L);
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -128,9 +128,9 @@ class BasicTests {
 
     @Test
     void transferMoney3Positive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Positive", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3Positive");
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Positive", 1L);
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -167,9 +167,9 @@ class BasicTests {
 
     @Test
     void transferMoney3ReconciliationError() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3ReconciliationError", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3ReconciliationError");
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3ReconciliationError", 1L);
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -210,8 +210,8 @@ class BasicTests {
 
     @Test
     void transferMoneyAndSnapshot() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoneyAndSnapshot", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoneyAndSnapshot");
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -260,9 +260,9 @@ class BasicTests {
 
     @Test
     void transferMoney3PositiveAndSnapshot() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshot", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3PositiveAndSnapshot");
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshot", 1L);
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
@@ -311,9 +311,9 @@ class BasicTests {
 
     @Test
     void transferMoney3PositiveAndSnapshotAndArchive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER);
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, 1L);
+        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive", 10L);
+        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive");
+        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive", 1L);
 
         Long balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
         Long balance2 = walletBalanceService.getAvailableBalance(wallet2Id);
