@@ -2,6 +2,7 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.model.TransactionStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -94,6 +95,13 @@ public class TransactionHistoryService {
         return history;
     }
 
+    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize) {
+        return getPaginatedTransactionHistory(walletId, pageNumber, pageSize, List.of());
+    }
+
+    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize, @NotNull TransactionStatus [] statusFilters) {
+        return getPaginatedTransactionHistory(walletId, pageNumber, pageSize, List.of(statusFilters));
+    }
 
     /**
      * Fetches a paginated transaction history for a specified wallet.
@@ -109,9 +117,10 @@ public class TransactionHistoryService {
      * also metadata about the pagination like the total number of records, current page number,
      * total pages, and page size.</p>
      *
-     * @param walletId    The ID of the wallet for which the transaction history is to be fetched.
-     * @param pageNumber  The page number to retrieve. Starts from 1.
-     * @param pageSize    The number of transaction records per page.
+     * @param walletId      The ID of the wallet for which the transaction history is to be fetched.
+     * @param pageNumber    The page number to retrieve. Starts from 1.
+     * @param pageSize      The number of transaction records per page.
+     * @param filters       Describes what the statusFilters parameter is for and that it's optional.
      *
      * @return A {@code PagedResponse<TransactionHistoryDTO>} object containing the list of transactions
      *         for the specified page and pagination metadata.
@@ -124,29 +133,42 @@ public class TransactionHistoryService {
      * @see PagedResponse
      * @see TransactionHistoryDTO
      */
-    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize) {
+    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize, @NotNull List<TransactionStatus> filters) {
+        List<String> statusFilters = filters.stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
+
+        String statusCondition = "";
+        if (!statusFilters.isEmpty()) {
+            statusCondition = " AND status IN :statusFilters";
+        }
 
         // SQL function COALESCE returns the first non-null value in a list.
         String baseSql = """
-            SELECT
-                id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
-            FROM
-                transaction
-            WHERE
-                wallet_id = :walletId
-            UNION
-            SELECT
-                id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
-            FROM
-                transaction_snapshot
-            WHERE
-                wallet_id = :walletId AND is_ledger_entry = FALSE
-        """;
+        SELECT
+            id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
+        FROM
+            transaction
+        WHERE
+            wallet_id = :walletId
+        """
+        + statusCondition + "\n" +
+        """
+        UNION
+        SELECT
+            id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
+        FROM
+            transaction_snapshot
+        WHERE
+            wallet_id = :walletId AND is_ledger_entry = FALSE""" + statusCondition;
 
         String fetchSql = baseSql + " ORDER BY timestamp DESC";
 
         Query fetchQuery = entityManager.createNativeQuery(fetchSql, Tuple.class);
         fetchQuery.setParameter("walletId", walletId);
+        if (!statusFilters.isEmpty()) {
+            fetchQuery.setParameter("statusFilters", statusFilters);
+        }
         fetchQuery.setFirstResult((pageNumber - 1) * pageSize); // Convert page number to 0-based index.
         fetchQuery.setMaxResults(pageSize);
 
@@ -169,10 +191,11 @@ public class TransactionHistoryService {
         String countSql = "SELECT COUNT(*) FROM (" + baseSql + ") AS combined_data";
         Query countQuery = entityManager.createNativeQuery(countSql);
         countQuery.setParameter("walletId", walletId);
+        if (!statusFilters.isEmpty()) {
+            countQuery.setParameter("statusFilters", statusFilters);
+        }
 
-        long totalRecords = ((Number) countQuery.getSingleResult()).longValue();
-
-        return new PagedResponse<>(data, pageNumber, pageSize, totalRecords);
+        int totalRecords = ((Number) countQuery.getSingleResult()).intValue();
+        return new PagedResponse<>(data, pageNumber, data.size(), totalRecords);
     }
 }
-

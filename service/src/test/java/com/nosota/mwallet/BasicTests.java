@@ -114,7 +114,7 @@ class BasicTests {
 
             walletService.hold(wallet1Id, 2L, referenceId); // expected exception InsufficientFundsException
         } catch (InsufficientFundsException ex) {
-            transactionService.rejectTransactionGroup(referenceId);
+            transactionService.rejectTransactionGroup(referenceId, ex.getMessage());
         }
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);
@@ -196,7 +196,7 @@ class BasicTests {
 
             transactionService.confirmTransactionGroup(referenceId);
         } catch (TransactionGroupZeroingOutException e) {
-            transactionService.rejectTransactionGroup(referenceId);
+            transactionService.rejectTransactionGroup(referenceId, e.getMessage());
         }
 
         balance1 = walletBalanceService.getAvailableBalance(wallet1Id);

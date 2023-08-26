@@ -12,6 +12,7 @@ import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.dao.DataAccessException;
@@ -91,7 +92,7 @@ public class TransactionService {
     }
 
     @Transactional
-    public void rejectTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException {
+    public void rejectTransactionGroup(@NotNull UUID referenceId, @NotEmpty String reason) throws TransactionNotFoundException {
         TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
                 .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
 
@@ -102,6 +103,7 @@ public class TransactionService {
         }
 
         transactionGroup.setStatus(TransactionGroupStatus.REJECTED);
+        transactionGroup.setReason(reason);
         transactionGroupRepository.save(transactionGroup);
     }
 
@@ -155,7 +157,7 @@ public class TransactionService {
         } catch (Exception e) {
             // 5. Update the TransactionGroup status to REJECTED
             // And reject all HOLD and RESERVE operations made under the same referenceId.
-            rejectTransactionGroup(referenceId);
+            rejectTransactionGroup(referenceId, e.getMessage());
             throw e;  // Propagate the exception for further handling or to inform the user
         }
 

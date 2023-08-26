@@ -2,6 +2,7 @@ package com.nosota.mwallet;
 
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionType;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Import;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -140,6 +142,8 @@ public class TransactionHistoryTest {
         // Did we lose 1 CREDIT transaction that was used for initial balance of the first wallet? No, we didn't.
         // The balance was taken into account in ledger entry, but we don't see it in transaction list since the API doesn't use archive table.
         assertEquals(pages1.getTotalRecords(), 60L);
+        assertEquals(pages1.getPageSize(), 2);
+        assertEquals(pages1.getTotalPages(), 30);
 
         System.out.println("-- Paginated History Wallet 1 --");
         printHistoryPage(pages1.getData()); // page #1
@@ -156,6 +160,8 @@ public class TransactionHistoryTest {
         // So each wallet has 80 entries in history.
         // 20 were moved to archive for each wallet.
         assertEquals(pages2.getTotalRecords(), 60L);
+        assertEquals(pages2.getPageSize(), 2);
+        assertEquals(pages2.getTotalPages(), 30);
 
         System.out.println("-- Paginated History Wallet 2 --");
         printHistoryPage(pages2.getData()); // page #1
@@ -164,6 +170,40 @@ public class TransactionHistoryTest {
             printHistoryPage(pages2Next.getData());
         }
 
+        // 13. Test filtered history, query all records.
+        int pageNumber1f = 1;
+        int pageSize1f = pages1.getTotalRecords();
+        PagedResponse<TransactionHistoryDTO> pages1f =
+                transactionHistoryService.getPaginatedTransactionHistory(wallet1Id, pageNumber1f, pageSize1f,
+                        List.of(TransactionStatus.HOLD));
+
+        System.out.println("-- Filtered History Wallet 1 --");
+        assertEquals(pages1f.getTotalRecords(), 30L);
+        assertEquals(pages1f.getPageSize(), 30L);
+        assertEquals(pages1f.getTotalPages(), 1L);
+        printHistoryPage(pages1f.getData());
+
+        // 14. Test filtered history, query more records that exist.
+        int pageNumber2f = 1;
+        int pageSize2f = pages2.getTotalRecords() * 2;
+        PagedResponse<TransactionHistoryDTO> pages2f =
+                transactionHistoryService.getPaginatedTransactionHistory(wallet2Id, pageNumber2f, pageSize2f,
+                        List.of(TransactionStatus.RESERVE));
+
+        System.out.println("-- Filtered History Wallet 2 --");
+        assertEquals(pages2f.getTotalRecords(), 30L);
+        assertEquals(pages2f.getPageSize(), 30L);
+        assertEquals(pages2f.getTotalPages(), 1L);
+        printHistoryPage(pages2f.getData());
+
+        // 15. Query empty list of transactions
+        PagedResponse<TransactionHistoryDTO> pages2e =
+                transactionHistoryService.getPaginatedTransactionHistory(wallet2Id, 1, 100,
+                        List.of(TransactionStatus.HOLD));
+
+        assertEquals(pages2e.getTotalRecords(), 0);
+        assertEquals(pages2e.getPageSize(), 0);
+        assertEquals(pages2e.getTotalPages(), 0);
     }
 
     private void perform10transactions(Integer wallet1Id, Integer wallet2Id) {

@@ -7,7 +7,7 @@ public class PagedResponse<T> {
     private List<T> data;
     private int pageNumber;
     private int pageSize;
-    private long totalRecords;
+    private int totalRecords;
     private int totalPages;
 
     /**
@@ -38,7 +38,7 @@ public class PagedResponse<T> {
      *                                  {@code totalRecords} is less than the size of
      *                                  {@code data}.
      */
-    public PagedResponse(List<T> data, int pageNumber, int pageSize, long totalRecords) {
+    public PagedResponse(List<T> data, int pageNumber, int pageSize, int totalRecords) {
         this.data = data;
         this.pageNumber = pageNumber;
         this.pageSize = pageSize;
@@ -70,11 +70,11 @@ public class PagedResponse<T> {
         this.pageSize = pageSize;
     }
 
-    public long getTotalRecords() {
+    public int getTotalRecords() {
         return totalRecords;
     }
 
-    public void setTotalRecords(long totalRecords) {
+    public void setTotalRecords(int totalRecords) {
         this.totalRecords = totalRecords;
     }
 

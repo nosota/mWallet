@@ -21,6 +21,8 @@ public class TransactionGroup {
     @Enumerated(EnumType.STRING)
     private TransactionGroupStatus status;
 
+    private String reason;
+
     public UUID getId() {
         return id;
     }
@@ -35,5 +37,13 @@ public class TransactionGroup {
 
     public void setStatus(TransactionGroupStatus status) {
         this.status = status;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 }
