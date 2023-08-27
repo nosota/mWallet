@@ -3,6 +3,7 @@ package com.nosota.mwallet.service;
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.TransactionStatus;
+import com.nosota.mwallet.model.TransactionType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -96,11 +97,7 @@ public class TransactionHistoryService {
     }
 
     public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize) {
-        return getPaginatedTransactionHistory(walletId, pageNumber, pageSize, List.of());
-    }
-
-    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize, @NotNull TransactionStatus [] statusFilters) {
-        return getPaginatedTransactionHistory(walletId, pageNumber, pageSize, List.of(statusFilters));
+        return getPaginatedTransactionHistory(walletId, pageNumber, pageSize, List.of(), List.of());
     }
 
     /**
@@ -133,46 +130,53 @@ public class TransactionHistoryService {
      * @see PagedResponse
      * @see TransactionHistoryDTO
      */
-    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(@NotNull Integer walletId, @Positive int pageNumber, @Positive int pageSize, @NotNull List<TransactionStatus> filters) {
-        List<String> statusFilters = filters.stream()
-                .map(Enum::name)
-                .collect(Collectors.toList());
+    public PagedResponse<TransactionHistoryDTO> getPaginatedTransactionHistory(
+            @NotNull Integer walletId,
+            @Positive int pageNumber,
+            @Positive int pageSize,
+            @NotNull List<TransactionType> typeFilters,
+            @NotNull List<TransactionStatus> statusFilters) {
+
+        List<String> typeFilterStrings = typeFilters.stream().map(Enum::name).collect(Collectors.toList());
+        List<String> statusFilterStrings = statusFilters.stream().map(Enum::name).collect(Collectors.toList());
 
         String statusCondition = "";
-        if (!statusFilters.isEmpty()) {
-            statusCondition = " AND status IN :statusFilters";
+        if (!statusFilterStrings.isEmpty()) {
+            statusCondition = " AND status IN :statusFilters \n";
         }
 
-        // SQL function COALESCE returns the first non-null value in a list.
+        String typeCondition = "";
+        if (!typeFilterStrings.isEmpty()) {
+            typeCondition = " AND type IN :typeFilters \n";
+        }
+
         String baseSql = """
-        SELECT
-            id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
-        FROM
-            transaction
-        WHERE
-            wallet_id = :walletId
-        """
-        + statusCondition + "\n" +
-        """
-        UNION
-        SELECT
-            id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
-        FROM
-            transaction_snapshot
-        WHERE
-            wallet_id = :walletId AND is_ledger_entry = FALSE""" + statusCondition;
+            SELECT id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
+            FROM transaction
+            WHERE wallet_id = :walletId
+            """
+                + statusCondition + typeCondition +
+            """
+            UNION
+            SELECT id, reference_id, wallet_id, type, amount, status, COALESCE(confirm_reject_timestamp, hold_reserve_timestamp) AS timestamp
+            FROM transaction_snapshot
+            WHERE wallet_id = :walletId AND is_ledger_entry = FALSE
+            """ + statusCondition + typeCondition;
 
         String fetchSql = baseSql + " ORDER BY timestamp DESC";
-
         Query fetchQuery = entityManager.createNativeQuery(fetchSql, Tuple.class);
         fetchQuery.setParameter("walletId", walletId);
-        if (!statusFilters.isEmpty()) {
-            fetchQuery.setParameter("statusFilters", statusFilters);
+        if (!statusFilterStrings.isEmpty()) {
+            fetchQuery.setParameter("statusFilters", statusFilterStrings);
         }
-        fetchQuery.setFirstResult((pageNumber - 1) * pageSize); // Convert page number to 0-based index.
+        if (!typeFilterStrings.isEmpty()) {
+            fetchQuery.setParameter("typeFilters", typeFilterStrings);
+        }
+        fetchQuery.setFirstResult((pageNumber - 1) * pageSize);
         fetchQuery.setMaxResults(pageSize);
 
-        @SuppressWarnings("unchecked") List<Tuple> results = fetchQuery.getResultList();
+        @SuppressWarnings("unchecked")
+        List<Tuple> results = fetchQuery.getResultList();
 
         List<TransactionHistoryDTO> data = results.stream()
                 .map(tuple -> {
@@ -187,12 +191,14 @@ public class TransactionHistoryService {
                 })
                 .collect(Collectors.toList());
 
-        // Now, let's get the total count for metadata
         String countSql = "SELECT COUNT(*) FROM (" + baseSql + ") AS combined_data";
         Query countQuery = entityManager.createNativeQuery(countSql);
         countQuery.setParameter("walletId", walletId);
-        if (!statusFilters.isEmpty()) {
-            countQuery.setParameter("statusFilters", statusFilters);
+        if (!statusFilterStrings.isEmpty()) {
+            countQuery.setParameter("statusFilters", statusFilterStrings);
+        }
+        if (!typeFilterStrings.isEmpty()) {
+            countQuery.setParameter("typeFilters", typeFilterStrings);
         }
 
         int totalRecords = ((Number) countQuery.getSingleResult()).intValue();

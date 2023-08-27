@@ -175,7 +175,7 @@ public class TransactionHistoryTest {
         int pageSize1f = pages1.getTotalRecords();
         PagedResponse<TransactionHistoryDTO> pages1f =
                 transactionHistoryService.getPaginatedTransactionHistory(wallet1Id, pageNumber1f, pageSize1f,
-                        List.of(TransactionStatus.HOLD));
+                        List.of(TransactionType.DEBIT), List.of(TransactionStatus.CONFIRMED));
 
         System.out.println("-- Filtered History Wallet 1 --");
         assertEquals(pages1f.getTotalRecords(), 30L);
@@ -188,7 +188,7 @@ public class TransactionHistoryTest {
         int pageSize2f = pages2.getTotalRecords() * 2;
         PagedResponse<TransactionHistoryDTO> pages2f =
                 transactionHistoryService.getPaginatedTransactionHistory(wallet2Id, pageNumber2f, pageSize2f,
-                        List.of(TransactionStatus.RESERVE));
+                        List.of(TransactionType.CREDIT), List.of(TransactionStatus.CONFIRMED));
 
         System.out.println("-- Filtered History Wallet 2 --");
         assertEquals(pages2f.getTotalRecords(), 30L);
@@ -199,7 +199,7 @@ public class TransactionHistoryTest {
         // 15. Query empty list of transactions
         PagedResponse<TransactionHistoryDTO> pages2e =
                 transactionHistoryService.getPaginatedTransactionHistory(wallet2Id, 1, 100,
-                        List.of(TransactionStatus.HOLD));
+                        List.of(TransactionType.DEBIT), List.of(TransactionStatus.HOLD));
 
         assertEquals(pages2e.getTotalRecords(), 0);
         assertEquals(pages2e.getPageSize(), 0);
