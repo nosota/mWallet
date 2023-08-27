@@ -117,7 +117,8 @@ public class TransactionHistoryService {
      * @param walletId      The ID of the wallet for which the transaction history is to be fetched.
      * @param pageNumber    The page number to retrieve. Starts from 1.
      * @param pageSize      The number of transaction records per page.
-     * @param filters       Describes what the statusFilters parameter is for and that it's optional.
+     * @param statusFilters A list of transaction statuses to filter by. Empty list means no filtering by status.
+     * @param typeFilters   A list of transaction types to filter by. Empty list means no filtering by type.
      *
      * @return A {@code PagedResponse<TransactionHistoryDTO>} object containing the list of transactions
      *         for the specified page and pagination metadata.
