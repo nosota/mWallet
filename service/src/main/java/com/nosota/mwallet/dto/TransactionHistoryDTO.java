@@ -6,7 +6,6 @@ import java.sql.Timestamp;
 import java.util.UUID;
 
 @Getter
-@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode

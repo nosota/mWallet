@@ -78,12 +78,6 @@ public class TransactionHistoryService {
 
         List<TransactionHistoryDTO> history = new ArrayList<>();
         for (Tuple tuple : results) {
-            TransactionHistoryDTO dto = new TransactionHistoryDTO();
-            dto.setReferenceId(tuple.get("reference_id", UUID.class));
-            dto.setWalletId(tuple.get("wallet_id", Integer.class));
-            dto.setType(tuple.get("type", String.class));
-            dto.setAmount(tuple.get("amount", Long.class));
-            dto.setStatus(tuple.get("status", String.class));
             Timestamp tm = tuple.get("confirm_reject_timestamp", Timestamp.class);
             if(tm == null) {
                 tm = tuple.get("hold_reserve_timestamp", Timestamp.class);
@@ -91,7 +85,14 @@ public class TransactionHistoryService {
             if(tm == null) {
                 throw new IllegalArgumentException("At least confirm_reject_timestamp or hold_reserve_timestamp must be not null.");
             }
-            dto.setTimestamp(tm);
+            TransactionHistoryDTO dto = new TransactionHistoryDTO(
+                    tuple.get("reference_id", UUID.class),
+                    tuple.get("wallet_id", Integer.class),
+                    tuple.get("type", String.class),
+                    tuple.get("amount", Long.class),
+                    tuple.get("status", String.class),
+                    tm
+            );
             history.add(dto);
         }
 
@@ -183,13 +184,14 @@ public class TransactionHistoryService {
 
         List<TransactionHistoryDTO> data = results.stream()
                 .map(tuple -> {
-                    TransactionHistoryDTO dto = new TransactionHistoryDTO();
-                    dto.setReferenceId(tuple.get("reference_id", UUID.class));
-                    dto.setWalletId(tuple.get("wallet_id", Integer.class));
-                    dto.setType(tuple.get("type", String.class));
-                    dto.setAmount(tuple.get("amount", Long.class));
-                    dto.setStatus(tuple.get("status", String.class));
-                    dto.setTimestamp(tuple.get("timestamp", Timestamp.class));
+                    TransactionHistoryDTO dto = new TransactionHistoryDTO(
+                            tuple.get("reference_id", UUID.class),
+                            tuple.get("wallet_id", Integer.class),
+                            tuple.get("type", String.class),
+                            tuple.get("amount", Long.class),
+                            tuple.get("status", String.class),
+                            tuple.get("timestamp", Timestamp.class)
+                    );
                     return dto;
                 })
                 .collect(Collectors.toList());
