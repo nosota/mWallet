@@ -12,6 +12,7 @@ import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class WalletService {
     private static final Logger LOG = LoggerFactory.getLogger(WalletService.class);
 
@@ -31,12 +33,6 @@ public class WalletService {
     private final TransactionRepository transactionRepository;
 
     private final WalletBalanceService walletBalanceService;
-
-    public WalletService(WalletRepository walletRepository, TransactionRepository transactionRepository, WalletBalanceService walletBalanceService) {
-        this.walletRepository = walletRepository;
-        this.transactionRepository = transactionRepository;
-        this.walletBalanceService = walletBalanceService;
-    }
 
     /**
      * Holds a specified amount from the given wallet, ensuring the wallet has the necessary balance.

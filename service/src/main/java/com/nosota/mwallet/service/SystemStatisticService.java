@@ -2,6 +2,10 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.repository.SystemStatisticRepository;
 import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -10,13 +14,10 @@ import java.math.BigDecimal;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class SystemStatisticService
 {
     private final SystemStatisticRepository systemStatisticRepository;
-
-    public SystemStatisticService(SystemStatisticRepository systemStatisticRepository) {
-        this.systemStatisticRepository = systemStatisticRepository;
-    }
 
     /**
      * Retrieves the reconciliation balance for the entire system.

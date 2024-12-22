@@ -7,6 +7,7 @@ import com.nosota.mwallet.model.TransactionType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class TransactionHistoryService {
 
     @PersistenceContext

@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -15,18 +16,13 @@ import java.time.LocalDateTime;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class WalletManagementService {
     private final WalletRepository walletRepository;
 
     private final TransactionRepository transactionRepository;
 
     private final TransactionGroupRepository transactionGroupRepository;
-
-    public WalletManagementService(WalletRepository walletRepository, TransactionRepository transactionRepository, TransactionGroupRepository transactionGroupRepository) {
-        this.walletRepository = walletRepository;
-        this.transactionRepository = transactionRepository;
-        this.transactionGroupRepository = transactionGroupRepository;
-    }
 
     /**
      * Creates a new wallet of the specified type and persists it to the database.

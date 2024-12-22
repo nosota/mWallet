@@ -8,6 +8,7 @@ import com.nosota.mwallet.model.TransactionSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -19,16 +20,10 @@ import java.util.stream.Stream;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class TransactionStatisticService {
     private final TransactionRepository transactionRepository;
     private final TransactionSnapshotRepository transactionSnapshotRepository;
-
-    @Autowired
-    public TransactionStatisticService(TransactionRepository transactionRepository,
-                                       TransactionSnapshotRepository transactionSnapshotRepository) {
-        this.transactionRepository = transactionRepository;
-        this.transactionSnapshotRepository = transactionSnapshotRepository;
-    }
 
     /**
      * Retrieves daily credit operations for a specified wallet and date.

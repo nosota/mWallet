@@ -1,12 +1,20 @@
 package com.nosota.mwallet.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "transaction_snapshot")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class TransactionSnapshot {
 
     @Id
@@ -41,101 +49,4 @@ public class TransactionSnapshot {
 
     @Column(name = "description")
     private String description;
-
-    public TransactionSnapshot() {
-    }
-
-    public TransactionSnapshot(Integer walletId, Long amount, TransactionType type,
-                               TransactionStatus status, LocalDateTime holdReserveTimestamp,
-                               LocalDateTime confirmRejectTimestamp, UUID referenceId, String description) {
-        this.walletId = walletId;
-        this.amount = amount;
-        this.type = type;
-        this.status = status;
-        this.holdReserveTimestamp = holdReserveTimestamp;
-        this.confirmRejectTimestamp = confirmRejectTimestamp;
-        this.snapshotDate = LocalDateTime.now();
-        this.referenceId = referenceId;
-        this.description = description;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Integer getWalletId() {
-        return walletId;
-    }
-
-    public void setWalletId(Integer walletId) {
-        this.walletId = walletId;
-    }
-
-    public TransactionType getType() {
-        return type;
-    }
-
-    public void setType(TransactionType type) {
-        this.type = type;
-    }
-
-    public Long getAmount() {
-        return amount;
-    }
-
-    public void setAmount(Long amount) {
-        this.amount = amount;
-    }
-
-    public TransactionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TransactionStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getHoldReserveTimestamp() {
-        return holdReserveTimestamp;
-    }
-
-    public void setHoldReserveTimestamp(LocalDateTime holdTimestamp) {
-        this.holdReserveTimestamp = holdTimestamp;
-    }
-
-    public LocalDateTime getConfirmRejectTimestamp() {
-        return confirmRejectTimestamp;
-    }
-
-    public void setConfirmRejectTimestamp(LocalDateTime confirmRejectTimestamp) {
-        this.confirmRejectTimestamp = confirmRejectTimestamp;
-    }
-
-    public LocalDateTime getSnapshotDate() {
-        return snapshotDate;
-    }
-
-    public void setSnapshotDate(LocalDateTime snapshotDate) {
-        this.snapshotDate = snapshotDate;
-    }
-
-    public UUID getReferenceId() {
-        return referenceId;
-    }
-
-    public void setReferenceId(UUID referenceId) {
-        this.referenceId = referenceId;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 }

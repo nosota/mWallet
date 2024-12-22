@@ -27,8 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 )
 @Testcontainers
 @ActiveProfiles("test")
-
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransactionSnapshotTest {
 
     @Autowired
@@ -56,8 +54,7 @@ public class TransactionSnapshotTest {
         PostgresContainer.getInstance();
     }
 
-    @BeforeAll
-    public void setup() throws Exception {
+    void setup() throws Exception {
         // Create initial wallets
         wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER,"TransactionSnapshotTest.setup", INITIAL_BALANCE);
         wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM,"TransactionSnapshotTest.setup", INITIAL_BALANCE);
@@ -79,7 +76,9 @@ public class TransactionSnapshotTest {
     }
 
     @Test
-    public void testCaptureDailySnapshotForWallet() {
+    public void testCaptureDailySnapshotForWallet() throws Exception {
+        setup();
+
         // Record initial balances and transaction histories
         Long initialWallet1Balance = walletBalanceService.getAvailableBalance(wallet1Id);
         Long initialWallet2Balance = walletBalanceService.getAvailableBalance(wallet2Id);

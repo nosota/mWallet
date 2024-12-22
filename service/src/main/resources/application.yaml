@@ -1,13 +1,18 @@
 spring:
+  application:
+    name: "@project.artifactId@"
+    version: "@project.version@"
   datasource:
-    url: jdbc:postgresql://localhost:5432/mwallet
-    username: mwallet
-    password: mwallet@001
     driver-class-name: org.postgresql.Driver
+    url: ${JDBC_URL:jdbc:postgresql://localhost:5432/fin}
+    username: ${JDBC_USER:user}
+    password: ${JDBC_PASSWORD:password}
+    hikari:
+      maximum-pool-size: 10
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: true
   flyway:
-    baseline-on-migrate: true
+    locations: classpath:db/migration
     enabled: true

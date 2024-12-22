@@ -9,6 +9,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class TransactionSnapshotService {
     @PersistenceContext
     private EntityManager entityManager;
@@ -30,14 +32,6 @@ public class TransactionSnapshotService {
     private final TransactionSnapshotRepository transactionSnapshotRepository;
 
     private final TransactionGroupRepository transactionGroupRepository;
-
-    public TransactionSnapshotService(TransactionRepository transactionRepository,
-                                      TransactionSnapshotRepository transactionSnapshotRepository,
-                                      TransactionGroupRepository transactionGroupRepository) {
-        this.transactionRepository = transactionRepository;
-        this.transactionSnapshotRepository = transactionSnapshotRepository;
-        this.transactionGroupRepository = transactionGroupRepository;
-    }
 
     /**
      * Captures a daily snapshot for a specified wallet, transferring relevant transactions to the snapshot storage.
@@ -86,12 +80,14 @@ public class TransactionSnapshotService {
         // 4. Convert these transactions to wallet snapshots
         List<TransactionSnapshot> snapshots = allRelatedTransactionsForWallet.stream()
                 .map(transaction -> new TransactionSnapshot(
+                        transaction.getId(),
                         transaction.getWalletId(),
-                        transaction.getAmount(),
                         transaction.getType(),
+                        transaction.getAmount(),
                         transaction.getStatus(),
                         transaction.getHoldReserveTimestamp(),
                         transaction.getConfirmRejectTimestamp(),
+                        LocalDateTime.now(),
                         transaction.getReferenceId(),
                         transaction.getDescription()
                 )).toList();

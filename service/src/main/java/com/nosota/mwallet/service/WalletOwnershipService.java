@@ -8,6 +8,7 @@ import com.nosota.mwallet.repository.WalletOwnerRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -15,13 +16,10 @@ import java.util.Optional;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class WalletOwnershipService {
 
     private final WalletOwnerRepository walletOwnerRepository;
-
-    public WalletOwnershipService(WalletOwnerRepository walletOwnerRepository) {
-        this.walletOwnerRepository = walletOwnerRepository;
-    }
 
     /**
      * Assigns ownership to a specific wallet.

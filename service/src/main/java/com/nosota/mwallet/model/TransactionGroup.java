@@ -1,6 +1,10 @@
 package com.nosota.mwallet.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
@@ -8,6 +12,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "transaction_group")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class TransactionGroup {
     @Id
     @GeneratedValue(generator = "UUID")
@@ -22,28 +30,4 @@ public class TransactionGroup {
     private TransactionGroupStatus status;
 
     private String reason;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public TransactionGroupStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TransactionGroupStatus status) {
-        this.status = status;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
 }

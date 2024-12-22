@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -12,15 +13,11 @@ import java.math.BigDecimal;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class WalletBalanceService {
     private final EntityManager entityManager;
 
     private final TransactionSnapshotRepository transactionSnapshotRepository;
-
-    public WalletBalanceService(EntityManager entityManager, TransactionSnapshotRepository transactionSnapshotRepository) {
-        this.entityManager = entityManager;
-        this.transactionSnapshotRepository = transactionSnapshotRepository;
-    }
 
     /**
      * Retrieves the available balance of a wallet with the given ID.

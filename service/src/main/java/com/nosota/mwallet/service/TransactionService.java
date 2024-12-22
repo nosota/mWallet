@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 @Service
 @Validated
+@AllArgsConstructor
 public class TransactionService {
 
     private final WalletService walletService;
@@ -31,12 +33,6 @@ public class TransactionService {
     private final TransactionGroupRepository transactionGroupRepository;
 
     private final TransactionRepository transactionRepository;
-
-    public TransactionService(WalletService walletService, TransactionGroupRepository transactionGroupRepository, TransactionRepository transactionRepository) {
-        this.walletService = walletService;
-        this.transactionGroupRepository = transactionGroupRepository;
-        this.transactionRepository = transactionRepository;
-    }
 
     @Transactional
     public UUID createTransactionGroup() {

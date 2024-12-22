@@ -1,10 +1,18 @@
 package com.nosota.mwallet.model;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "wallet_owner")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class WalletOwner {
 
     @Id
@@ -26,52 +34,4 @@ public class WalletOwner {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Integer getWalletId() {
-        return walletId;
-    }
-
-    public void setWalletId(Integer walletId) {
-        this.walletId = walletId;
-    }
-
-    public OwnerType getOwnerType() {
-        return ownerType;
-    }
-
-    public void setOwnerType(OwnerType ownerType) {
-        this.ownerType = ownerType;
-    }
-
-    public String getOwnerRef() {
-        return ownerRef;
-    }
-
-    public void setOwnerRef(String ownerRef) {
-        this.ownerRef = ownerRef;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

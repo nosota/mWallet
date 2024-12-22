@@ -1,5 +1,7 @@
 package com.nosota.mwallet.error;
 
+import lombok.AllArgsConstructor;
+
 public class InsufficientFundsException extends Exception {
     public InsufficientFundsException() {
     }
