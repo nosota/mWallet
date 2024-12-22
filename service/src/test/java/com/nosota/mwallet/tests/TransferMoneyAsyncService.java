@@ -1,4 +1,4 @@
-package com.nosota.mwallet;
+package com.nosota.mwallet.tests;
 
 import com.nosota.mwallet.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;

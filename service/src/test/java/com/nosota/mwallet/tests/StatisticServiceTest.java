@@ -1,21 +1,34 @@
-package com.nosota.mwallet;
+package com.nosota.mwallet.tests;
 
+import com.nosota.mwallet.MwalletApplication;
+import com.nosota.mwallet.container.PostgresContainer;
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.TransactionService;
 import com.nosota.mwallet.service.TransactionStatisticService;
 import com.nosota.mwallet.service.WalletBalanceService;
 import com.nosota.mwallet.service.WalletManagementService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = MwalletApplication.class,
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"spring.main.allow-bean-definition-overriding=true",
+                "spring.cloud.config.enabled=false",
+                "spring.cloud.config.discovery.enabled=false"}
+)
+@Testcontainers
+@ActiveProfiles({"test"})
 public class StatisticServiceTest {
     @Autowired
     private WalletBalanceService walletBalanceService;
@@ -30,6 +43,11 @@ public class StatisticServiceTest {
     private TransactionStatisticService transactionStatisticService;
 
     private static Long INITIAL_BALANCE = 10000L;
+
+    @BeforeAll
+    public static void startPostgresContainer() {
+        PostgresContainer.getInstance();
+    }
 
     @Test
     public void dailyStat() throws Exception {

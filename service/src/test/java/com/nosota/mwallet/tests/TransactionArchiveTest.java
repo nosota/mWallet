@@ -1,5 +1,7 @@
-package com.nosota.mwallet;
+package com.nosota.mwallet.tests;
 
+import com.nosota.mwallet.MwalletApplication;
+import com.nosota.mwallet.container.PostgresContainer;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
@@ -8,15 +10,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = MwalletApplication.class,
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"spring.main.allow-bean-definition-overriding=true",
+                "spring.cloud.config.enabled=false",
+                "spring.cloud.config.discovery.enabled=false"}
+)
+@Testcontainers
+@ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class TransactionSnapshotTest {
+public class TransactionArchiveTest {
 
     @Autowired
     private TransactionService transactionService;
@@ -36,13 +49,18 @@ public class TransactionSnapshotTest {
     private Integer wallet1Id;
     private Integer wallet2Id;
 
-    private static Long INITIAL_BALANCE = 5000L;
+    private static Long INITIAL_BALANCE = 10000L;
+
+    @BeforeAll
+    public static void startPostgresContainer() {
+        PostgresContainer.getInstance();
+    }
 
     @BeforeAll
     public void setup() throws Exception {
         // Create initial wallets
-        wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER,"TransactionSnapshotTest.setup", INITIAL_BALANCE);
-        wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM,"TransactionSnapshotTest.setup", INITIAL_BALANCE);
+        wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "TransactionArchiveTest.setup", INITIAL_BALANCE);
+        wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, "TransactionArchiveTest.setup", INITIAL_BALANCE);
 
         transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 100L);
         transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 100L);
@@ -74,6 +92,11 @@ public class TransactionSnapshotTest {
         // Capture the snapshot
         transactionSnapshotService.captureDailySnapshotForWallet(wallet1Id);
         transactionSnapshotService.captureDailySnapshotForWallet(wallet2Id);
+
+        // Archive transactions
+        LocalDateTime olderThan = LocalDateTime.now();
+        transactionSnapshotService.archiveOldSnapshots(wallet1Id, olderThan);
+        transactionSnapshotService.archiveOldSnapshots(wallet2Id, olderThan);
 
         // Verify that the balances remain the same after the snapshot
         Long afterSnapshotWallet1Balance = walletBalanceService.getAvailableBalance(wallet1Id);

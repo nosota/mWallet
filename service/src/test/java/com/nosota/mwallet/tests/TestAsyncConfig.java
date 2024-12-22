@@ -1,4 +1,4 @@
-package com.nosota.mwallet;
+package com.nosota.mwallet.tests;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
