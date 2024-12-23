@@ -17,7 +17,7 @@
    * Optimized database operations by batching and reducing redundant queries.
    * Simplified ledger entry creation and tracking, ensuring clear and auditable associations with archived snapshots.
    * Validated reference IDs before archiving, ensuring alignment with cumulative balance calculations.
-6. Added LedgerTrackingRepository for opeations under ledger_entries_tracking table.
+6. Added LedgerTrackingRepository for operations under ledger_entries_tracking table.
 
 ## **Wallet System - Release Notes v1.0.3**
 
