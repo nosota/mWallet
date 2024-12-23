@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Service
 @Validated
 @AllArgsConstructor
+@Slf4j
 public class WalletManagementService {
     private final WalletRepository walletRepository;
 

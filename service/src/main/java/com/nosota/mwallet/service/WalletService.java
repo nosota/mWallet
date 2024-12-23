@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @Service
 @Validated
 @AllArgsConstructor
+@Slf4j
 public class WalletService {
     private static final Logger LOG = LoggerFactory.getLogger(WalletService.class);
 

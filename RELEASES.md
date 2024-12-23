@@ -1,3 +1,12 @@
+## **Wallet System - Release Notes v1.0.5**
+
+### **Date:** ?.?.?
+
+### **Overview:**
+
+1. TBD
+2. 
+
 ## **Wallet System - Release Notes v1.0.4**
 
 ### **Date:** 23.12.2024

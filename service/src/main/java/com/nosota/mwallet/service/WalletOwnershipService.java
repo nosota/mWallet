@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -17,6 +18,7 @@ import java.util.Optional;
 @Service
 @Validated
 @AllArgsConstructor
+@Slf4j
 public class WalletOwnershipService {
 
     private final WalletOwnerRepository walletOwnerRepository;
