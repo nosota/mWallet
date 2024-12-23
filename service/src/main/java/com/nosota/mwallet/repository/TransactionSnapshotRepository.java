@@ -52,6 +52,9 @@ public interface TransactionSnapshotRepository extends JpaRepository<Transaction
 
     long countByIdIn(List<Integer> ids);
 
+    @Query("SELECT COUNT(ts) FROM TransactionSnapshot ts WHERE ts.walletId = :walletId AND ts.referenceId IN :referenceIds")
+    long countByWalletIdAndReferenceIds(@Param("walletId") Integer walletId, @Param("referenceIds") List<UUID> referenceIds);
+
     @Query("SELECT COUNT(ts) FROM TransactionSnapshot ts WHERE ts.referenceId IN :referenceIds")
     long countByReferenceIdIn(@Param("referenceIds") List<UUID> referenceIds);
 
@@ -81,17 +84,25 @@ public interface TransactionSnapshotRepository extends JpaRepository<Transaction
                                         @Param("status") TransactionStatus status,
                                         @Param("isLedgerEntry") Boolean isLedgerEntry);
 
+//    @Modifying
+//    @Query("""
+//    INSERT INTO transaction_snapshot_archive
+//    SELECT t FROM TransactionSnapshot t
+//    WHERE t.walletId = :walletId
+//      AND t.snapshotDate < :olderThan
+//      AND t.isLedgerEntry = :isLedgerEntry
+//    """)
+//    int archiveOldSnapshots(@Param("walletId") Integer walletId,
+//                            @Param("olderThan") LocalDateTime olderThan,
+//                            @Param("isLedgerEntry") Boolean isLedgerEntry);
     @Modifying
-    @Query("""
-    INSERT INTO transaction_snapshot_archive
-    SELECT t FROM TransactionSnapshot t 
-    WHERE t.walletId = :walletId 
-      AND t.snapshotDate < :olderThan 
-      AND t.isLedgerEntry = :isLedgerEntry
-    """)
-    int archiveOldSnapshots(@Param("walletId") Integer walletId,
-                            @Param("olderThan") LocalDateTime olderThan,
-                            @Param("isLedgerEntry") Boolean isLedgerEntry);
+    @Query(value = """
+    INSERT INTO transaction_snapshot_archive (id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, snapshot_date, reference_id, description, is_ledger_entry)
+    SELECT t.id, t.wallet_id, t.type, t.amount, t.status, t.hold_reserve_timestamp, t.confirm_reject_timestamp, t.snapshot_date, t.reference_id, t.description, t.is_ledger_entry
+    FROM transaction_snapshot t
+    WHERE t.wallet_id = :walletId AND t.snapshot_date < :olderThan AND t.is_ledger_entry = :isLedgerEntry
+    """, nativeQuery = true)
+    int archiveOldSnapshots(@Param("walletId") Integer walletId, @Param("olderThan") LocalDateTime olderThan, @Param("isLedgerEntry") Boolean isLedgerEntry);
 
     @Modifying
     @Query("""

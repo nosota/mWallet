@@ -4,6 +4,6 @@
 CREATE TABLE ledger_entries_tracking
 (
     id               SERIAL PRIMARY KEY,
-    ledeger_entry_id INTEGER NOT NULL,
+    ledger_entry_id INTEGER NOT NULL,
     reference_id     UUID
 );

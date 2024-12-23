@@ -1,4 +1,4 @@
-## **Wallet System - Release Notes v1.0.3*4
+## **Wallet System - Release Notes v1.0.34**
 
 ### **Date:** 23.12.2024
 
@@ -12,9 +12,11 @@
    * Combine the selection of TransactionGroup and Transaction into a single query with filtering at the database level.
    * Add a validation step to ensure the success of operations.
 5. Changes in method **archiveOldSnapshots**:
-   * 
-
-
+   *  Ensured atomicity of the archiving process by using a single transactional context to prevent partial updates
+   * Added checks to validate the number of archived and deleted rows, logging mismatches and preventing data inconsistencies.
+   * Optimized database operations by batching and reducing redundant queries.
+   * Simplified ledger entry creation and tracking, ensuring clear and auditable associations with archived snapshots.
+   * Validated reference IDs before archiving, ensuring alignment with cumulative balance calculations.
 
 ## **Wallet System - Release Notes v1.0.3**
 

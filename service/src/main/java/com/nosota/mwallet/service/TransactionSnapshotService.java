@@ -89,7 +89,7 @@ public class TransactionSnapshotService {
         // 2. Convert transactions to snapshots
         List<TransactionSnapshot> snapshots = transactionsToSnapshot.stream()
                 .map(transaction -> new TransactionSnapshot(
-                        transaction.getId(),
+                        null, // will be generated automatically
                         transaction.getWalletId(),
                         transaction.getType(),
                         transaction.getAmount(),
@@ -107,8 +107,12 @@ public class TransactionSnapshotService {
         transactionSnapshotRepository.saveAll(snapshots);
 
         // 4. Delete transactions in a batch, ensuring all snapshots were saved
-        long savedSnapshotsCount = transactionSnapshotRepository.countByIdIn(
-                snapshots.stream().map(TransactionSnapshot::getId).toList());
+//        long savedSnapshotsCount = transactionSnapshotRepository.countByIdIn(
+//                snapshots.stream().map(TransactionSnapshot::getId).toList());
+        long savedSnapshotsCount = transactionSnapshotRepository.countByWalletIdAndReferenceIds(
+                walletId,
+                snapshots.stream().map(TransactionSnapshot::getReferenceId).toList()
+        );
 
         if (savedSnapshotsCount == snapshots.size()) {
             // All snapshots were saved successfully, proceed to delete transactions
@@ -153,6 +157,7 @@ public class TransactionSnapshotService {
 
         // Step 2: Create a new ledger entry in the transaction_snapshot table.
         TransactionSnapshot ledgerEntry = new TransactionSnapshot();
+        // id will be automatically generated
         ledgerEntry.setWalletId(walletId);
         ledgerEntry.setAmount(cumulativeBalance);
         ledgerEntry.setType(TransactionType.LEDGER);
