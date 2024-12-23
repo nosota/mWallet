@@ -145,7 +145,7 @@ public class TransactionSnapshotService {
     public void archiveOldSnapshots(@NotNull Integer walletId, @NotNull LocalDateTime olderThan) {
         // Step 1: Calculate the cumulative balance of snapshots to be archived.
         Long cumulativeBalance = transactionSnapshotRepository.calculateCumulativeBalance(walletId, olderThan);
-        if (cumulativeBalance == null || cumulativeBalance == 0L) {
+        if (cumulativeBalance == 0L) {
             log.debug("No snapshots to archive for walletId={} olderThan={}", walletId, olderThan);
             return;
         }
