@@ -146,11 +146,11 @@ public class TransactionSnapshotService {
         // Step 1: Calculate the cumulative balance of snapshots to be archived.
         Long cumulativeBalance = transactionSnapshotRepository.calculateCumulativeBalance(walletId, olderThan);
         if (cumulativeBalance == null || cumulativeBalance == 0L) {
-            log.info("No snapshots to archive for walletId={} olderThan={}", walletId, olderThan);
+            log.debug("No snapshots to archive for walletId={} olderThan={}", walletId, olderThan);
             return;
         }
 
-        log.info("Cumulative balance to archive: {} cents for walletId={}", cumulativeBalance, walletId);
+        log.debug("Cumulative balance to archive: {} cents for walletId={}", cumulativeBalance, walletId);
 
         // Step 2: Create a new ledger entry in the transaction_snapshot table.
         TransactionSnapshot ledgerEntry = new TransactionSnapshot();
@@ -163,7 +163,7 @@ public class TransactionSnapshotService {
         ledgerEntry.setLedgerEntry(true);
 
         final TransactionSnapshot ledgerEntrySaved = transactionSnapshotRepository.save(ledgerEntry);
-        log.info("Ledger entry created with ID={} for walletId={}", ledgerEntrySaved.getId(), walletId);
+        log.debug("Ledger entry created with ID={} for walletId={}", ledgerEntrySaved.getId(), walletId);
 
         // Step 3: Retrieve reference IDs for the snapshots being archived.
         List<UUID> referenceIds = transactionSnapshotRepository.findDistinctReferenceIds(walletId, olderThan, TransactionStatus.CONFIRMED,false);
@@ -177,19 +177,20 @@ public class TransactionSnapshotService {
                 .map(referenceId -> new LedgerEntriesTracking(ledgerEntrySaved.getId(), referenceId))
                 .collect(Collectors.toList());
         ledgerTrackingRepository.saveAll(trackingEntries);
-        log.info("Saved {} ledger tracking entries for ledgerId={}", trackingEntries.size(), ledgerEntrySaved.getId());
+        log.debug("Saved {} ledger tracking entries for ledgerId={}", trackingEntries.size(), ledgerEntrySaved.getId());
 
         // Step 5: Move old snapshots to the archive table.
         int archivedRows = transactionSnapshotRepository.archiveOldSnapshots(walletId, olderThan, false);
-        log.info("Archived {} snapshots for walletId={}", archivedRows, walletId);
+        log.debug("Archived {} snapshots for walletId={}", archivedRows, walletId);
 
         // Step 6: Delete old snapshots from the transaction_snapshot table.
         int deletedRows = transactionSnapshotRepository.deleteOldSnapshots(walletId, olderThan, false);
         if (archivedRows != deletedRows) {
-            log.warn("Mismatch between archived and deleted snapshot counts: archived={}, deleted={}", archivedRows, deletedRows);
+            throw new IllegalStateException(String.format(
+                    "Mismatch between archived and deleted snapshot counts: archived=%d, deleted=%d for walletId=%d",
+                    archivedRows, deletedRows, walletId));
         } else {
-            log.info("Successfully deleted {} snapshots for walletId={}", deletedRows, walletId);
+            log.debug("Successfully deleted {} snapshots for walletId={}", deletedRows, walletId);
         }
     }
-
 }
