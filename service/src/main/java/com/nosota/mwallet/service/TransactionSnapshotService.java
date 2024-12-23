@@ -63,22 +63,26 @@ public class TransactionSnapshotService {
      */
     @Transactional
     public void captureDailySnapshotForWallet(@NotNull Integer walletId) {
-        // 1. Fetch all the CONFIRMED and REJECTED transaction groups for the specified wallet
-        List<TransactionGroup> relevantGroups = transactionGroupRepository.findAllByStatusIn (
-                Arrays.asList(TransactionGroupStatus.CONFIRMED, TransactionGroupStatus.REJECTED));
+        // 1. Fetch all transactions that meet the criteria using a JOIN
+        List<Transaction> transactionsToSnapshot = entityManager.createQuery(
+                        """
+                        SELECT t
+                        FROM Transaction t
+                        JOIN TransactionGroup tg ON t.referenceId = tg.id
+                        WHERE t.walletId = :walletId
+                          AND tg.status IN (:statuses)
+                        """, Transaction.class)
+                .setParameter("walletId", walletId)
+                .setParameter("statuses", Arrays.asList(TransactionGroupStatus.CONFIRMED, TransactionGroupStatus.REJECTED))
+                .getResultList();
 
-        // 2. Extract the reference IDs from these groups
-        Set<UUID> referenceIdsToSnapshot = relevantGroups.stream()
-                .map(TransactionGroup::getId)
-                .collect(Collectors.toSet());
+        if (transactionsToSnapshot.isEmpty()) {
+            // No transactions to snapshot
+            return;
+        }
 
-        // 3. Fetch all transactions (HOLD, RESERVE, CONFIRMED) for the specified wallet with the extracted reference IDs
-        List<UUID> referenceIdList = new ArrayList<>(referenceIdsToSnapshot);
-        List<Transaction> allRelatedTransactionsForWallet =
-                transactionRepository.findAllByWalletIdAndReferenceIdIn(walletId, referenceIdList);
-
-        // 4. Convert these transactions to wallet snapshots
-        List<TransactionSnapshot> snapshots = allRelatedTransactionsForWallet.stream()
+        // 2. Convert transactions to snapshots
+        List<TransactionSnapshot> snapshots = transactionsToSnapshot.stream()
                 .map(transaction -> new TransactionSnapshot(
                         transaction.getId(),
                         transaction.getWalletId(),
@@ -87,17 +91,26 @@ public class TransactionSnapshotService {
                         transaction.getStatus(),
                         transaction.getHoldReserveTimestamp(),
                         transaction.getConfirmRejectTimestamp(),
-                        LocalDateTime.now(),
+                        LocalDateTime.now(), // snapshot creation timestamp
                         transaction.getReferenceId(),
                         transaction.getDescription()
-                )).toList();
+                ))
+                .toList();
 
-        // 5. Save the snapshots
+        // 3. Save snapshots in a batch
         transactionSnapshotRepository.saveAll(snapshots);
 
-        // 6. Delete the transactions from the transactions table
-        transactionRepository.deleteAll(allRelatedTransactionsForWallet);
+        // 4. Delete transactions in a batch, ensuring all snapshots were saved
+        long savedSnapshotsCount = transactionSnapshotRepository.countByIdIn(
+                snapshots.stream().map(TransactionSnapshot::getId).toList());
 
+        if (savedSnapshotsCount == snapshots.size()) {
+            // All snapshots were saved successfully, proceed to delete transactions
+            transactionRepository.deleteAll(transactionsToSnapshot);
+        } else {
+            // Log an error or throw an exception to prevent data loss
+            throw new IllegalStateException("Failed to save all snapshots. Transaction deletion aborted.");
+        }
     }
 
     /**

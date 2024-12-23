@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface TransactionSnapshotRepository extends JpaRepository<TransactionSnapshot, Integer> {
@@ -46,4 +47,9 @@ public interface TransactionSnapshotRepository extends JpaRepository<Transaction
     List<TransactionSnapshot> findDebitSnapshotOperationsInRange(@Param("walletId") Integer walletId,
                                                                  @Param("fromDate") LocalDateTime fromDate,
                                                                  @Param("toDate") LocalDateTime toDate);
+
+    long countByIdIn(List<Integer> ids);
+
+    @Query("SELECT COUNT(ts) FROM TransactionSnapshot ts WHERE ts.referenceId IN :referenceIds")
+    long countByReferenceIdIn(@Param("referenceIds") List<UUID> referenceIds);
 }

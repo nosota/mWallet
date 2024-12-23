@@ -1,3 +1,20 @@
+## **Wallet System - Release Notes v1.0.3*4
+
+### **Date:** 23.12.2024
+
+### **Overview:**
+
+1. Use Lombok to simplify code.
+2. Use Test Containers for integration testing.
+3. Make all DTO immutable.
+4. Changes in method **captureDailySnapshotForWallet**:
+   * Use batches for inserting/deleting data.
+   * Combine the selection of TransactionGroup and Transaction into a single query with filtering at the database level.
+   * Add a validation step to ensure the success of operations.
+5. TBD
+
+
+
 ## **Wallet System - Release Notes v1.0.3**
 
 ### **Date:** 22.08.2023

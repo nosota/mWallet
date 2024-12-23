@@ -18,7 +18,7 @@ import java.util.UUID;
 public class TransactionSnapshot {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(name = "wallet_id")
