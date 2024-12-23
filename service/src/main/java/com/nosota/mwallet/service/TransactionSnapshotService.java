@@ -1,6 +1,7 @@
 package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.model.*;
+import com.nosota.mwallet.repository.LedgerTrackingRepository;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
@@ -10,6 +11,7 @@ import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 @Service
 @Validated
 @AllArgsConstructor
+@Slf4j
 public class TransactionSnapshotService {
     @PersistenceContext
     private EntityManager entityManager;
@@ -32,6 +35,8 @@ public class TransactionSnapshotService {
     private final TransactionSnapshotRepository transactionSnapshotRepository;
 
     private final TransactionGroupRepository transactionGroupRepository;
+
+    private final LedgerTrackingRepository ledgerTrackingRepository;
 
     /**
      * Captures a daily snapshot for a specified wallet, transferring relevant transactions to the snapshot storage.
@@ -93,7 +98,8 @@ public class TransactionSnapshotService {
                         transaction.getConfirmRejectTimestamp(),
                         LocalDateTime.now(), // snapshot creation timestamp
                         transaction.getReferenceId(),
-                        transaction.getDescription()
+                        transaction.getDescription(),
+                        false // it is regular not ledger record
                 ))
                 .toList();
 
@@ -136,116 +142,52 @@ public class TransactionSnapshotService {
      */
     @Transactional
     public void archiveOldSnapshots(@NotNull Integer walletId, @NotNull LocalDateTime olderThan) {
-        // IMPORTANT: Transaction snapshot HAS NO any IN_PROGRESS transaction group.
-        // So it is safe to just move transaction to archive and don't care about
-        // transactions that are currently going. All of them keep their state in transaction table.
-
-        // 1. Calculate the cumulative balance of old snapshots for the given walletId that will be archived.
-        // SELECT SUM(amount)
-        //    FROM transaction_snapshot
-        //        WHERE wallet_id = 2 AND snapshot_date < TO_TIMESTAMP('2023-08-22 17:32:40', 'YYYY-MM-DD HH24:MI:SS') AND is_ledger_entry = FALSE AND status = 'CONFIRMED';
-        String cumulativeBalanceSql = """
-                    SELECT SUM(amount)
-                        FROM transaction_snapshot
-                        WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE AND status = 'CONFIRMED'
-                """;
-
-        Query cumulativeBalanceQuery = entityManager.createNativeQuery(cumulativeBalanceSql);
-        cumulativeBalanceQuery.setParameter("walletId", walletId);
-        cumulativeBalanceQuery.setParameter("olderThan", olderThan);
-
-        BigDecimal cumulativeBalance = (BigDecimal) cumulativeBalanceQuery.getSingleResult();
-        if (cumulativeBalance == null) {
-            cumulativeBalance = BigDecimal.ZERO;
-        }
-
-        if(cumulativeBalance.longValue() == 0) {
-            // Nothing to archive.
+        // Step 1: Calculate the cumulative balance of snapshots to be archived.
+        Long cumulativeBalance = transactionSnapshotRepository.calculateCumulativeBalance(walletId, olderThan);
+        if (cumulativeBalance == null || cumulativeBalance == 0L) {
+            log.info("No snapshots to archive for walletId={} olderThan={}", walletId, olderThan);
             return;
         }
 
-        // 2. Insert the new ledger entry and get its ID
-        String insertLedgerSql = """
-                    INSERT INTO transaction_snapshot(wallet_id, amount, status, type, snapshot_date, is_ledger_entry)
-                        VALUES(:walletId, :cumulativeBalance, :status, :type, :olderThan, TRUE)
-                            RETURNING id;
-                """;
+        log.info("Cumulative balance to archive: {} cents for walletId={}", cumulativeBalance, walletId);
 
-        Query insertLedgerQuery = entityManager.createNativeQuery(insertLedgerSql);
-        insertLedgerQuery.setParameter("walletId", walletId);
-        insertLedgerQuery.setParameter("cumulativeBalance", cumulativeBalance);
-        insertLedgerQuery.setParameter("olderThan", olderThan);
-        insertLedgerQuery.setParameter("status", TransactionStatus.CONFIRMED.name());
-        insertLedgerQuery.setParameter("type", TransactionType.LEDGER.name());
+        // Step 2: Create a new ledger entry in the transaction_snapshot table.
+        TransactionSnapshot ledgerEntry = new TransactionSnapshot();
+        ledgerEntry.setWalletId(walletId);
+        ledgerEntry.setAmount(cumulativeBalance);
+        ledgerEntry.setType(TransactionType.LEDGER);
+        ledgerEntry.setStatus(TransactionStatus.CONFIRMED);
+        ledgerEntry.setSnapshotDate(LocalDateTime.now());
+        ledgerEntry.setLedgerEntry(true);
 
-        Integer ledgerEntryId = (Integer) insertLedgerQuery.getSingleResult();
+        final TransactionSnapshot ledgerEntrySaved = transactionSnapshotRepository.save(ledgerEntry);
+        log.info("Ledger entry created with ID={} for walletId={}", ledgerEntrySaved.getId(), walletId);
 
-        // 3. Query unique list of transaction groups associated to new ledger entry.
-        String uniqueListOfRefIdsSql = """
-                    SELECT DISTINCT reference_id
-                        FROM transaction_snapshot
-                        WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE AND status = 'CONFIRMED'
-                """;
-
-        Query uniqueListOfRefIdsQuery = entityManager.createNativeQuery(uniqueListOfRefIdsSql);
-        uniqueListOfRefIdsQuery.setParameter("walletId", walletId);
-        uniqueListOfRefIdsQuery.setParameter("olderThan", olderThan);
-
-        List<UUID> referenceIdList = uniqueListOfRefIdsQuery.getResultList();
-        if(referenceIdList.size() == 0) {
-            // Unreachable statement
-            throw new UnsupportedOperationException("Unreachable statement, cumulativeBalance must not be positive without transaction groups.");
+        // Step 3: Retrieve reference IDs for the snapshots being archived.
+        List<UUID> referenceIds = transactionSnapshotRepository.findDistinctReferenceIds(walletId, olderThan, TransactionStatus.CONFIRMED,false);
+        if (referenceIds.isEmpty()) {
+            log.error("Unexpected state: No reference IDs found despite a positive cumulative balance.");
+            throw new IllegalStateException("Reference IDs not found for snapshots being archived.");
         }
 
-        // 4. Save ledgerEntryId and the corresponding reference Ids to ledger_entries_tracking table.
-        String insertLederTrackingEntriesSql = """
-            INSERT INTO ledger_entries_tracking (ledeger_entry_id, reference_id)
-            VALUES \n
-        """;
+        // Step 4: Save ledger entry tracking information.
+        List<LedgerEntriesTracking> trackingEntries = referenceIds.stream()
+                .map(referenceId -> new LedgerEntriesTracking(ledgerEntrySaved.getId(), referenceId))
+                .collect(Collectors.toList());
+        ledgerTrackingRepository.saveAll(trackingEntries);
+        log.info("Saved {} ledger tracking entries for ledgerId={}", trackingEntries.size(), ledgerEntrySaved.getId());
 
-        StringBuffer values = new StringBuffer();
-        if(referenceIdList != null && referenceIdList.size() > 0) {
-            referenceIdList.forEach(referenceId -> {
-                values.append("(")
-                        .append(ledgerEntryId)
-                        .append(",")
-                        .append("'")
-                        .append(referenceId)
-                        .append("'")
-                        .append(")")
-                        .append(",\n");
-            });
+        // Step 5: Move old snapshots to the archive table.
+        int archivedRows = transactionSnapshotRepository.archiveOldSnapshots(walletId, olderThan, false);
+        log.info("Archived {} snapshots for walletId={}", archivedRows, walletId);
+
+        // Step 6: Delete old snapshots from the transaction_snapshot table.
+        int deletedRows = transactionSnapshotRepository.deleteOldSnapshots(walletId, olderThan, false);
+        if (archivedRows != deletedRows) {
+            log.warn("Mismatch between archived and deleted snapshot counts: archived={}, deleted={}", archivedRows, deletedRows);
+        } else {
+            log.info("Successfully deleted {} snapshots for walletId={}", deletedRows, walletId);
         }
-        int lastComma = values.length() - 2;
-        values.replace(lastComma, lastComma + 1, ";");
-
-        insertLederTrackingEntriesSql = insertLederTrackingEntriesSql + values.toString();
-        Query insertLederTrackingEntriesQuery = entityManager.createNativeQuery(insertLederTrackingEntriesSql);
-        insertLederTrackingEntriesQuery.executeUpdate();
-
-        // 5. Insert old snapshots into transaction_snapshot_archive table
-        String insertIntoArchiveSql = """
-                    INSERT INTO transaction_snapshot_archive
-                        SELECT id, wallet_id, type, amount, status, hold_reserve_timestamp, confirm_reject_timestamp, snapshot_date, reference_id, description FROM transaction_snapshot
-                            WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
-                """;
-
-        Query insertIntoArchiveQuery = entityManager.createNativeQuery(insertIntoArchiveSql);
-        insertIntoArchiveQuery.setParameter("walletId", walletId);
-        insertIntoArchiveQuery.setParameter("olderThan", olderThan);
-
-        insertIntoArchiveQuery.executeUpdate();
-
-        // 6. Delete the old snapshots from transaction_snapshot table
-        String deleteOldSnapshotsSql = """
-                    DELETE FROM transaction_snapshot
-                        WHERE wallet_id = :walletId AND snapshot_date < :olderThan AND is_ledger_entry = FALSE
-                """;
-
-        Query deleteOldSnapshotsQuery = entityManager.createNativeQuery(deleteOldSnapshotsSql);
-        deleteOldSnapshotsQuery.setParameter("walletId", walletId);
-        deleteOldSnapshotsQuery.setParameter("olderThan", olderThan);
-
-        deleteOldSnapshotsQuery.executeUpdate();
     }
+
 }

@@ -11,7 +11,8 @@
    * Use batches for inserting/deleting data.
    * Combine the selection of TransactionGroup and Transaction into a single query with filtering at the database level.
    * Add a validation step to ensure the success of operations.
-5. TBD
+5. Changes in method **archiveOldSnapshots**:
+   * 
 
 
 

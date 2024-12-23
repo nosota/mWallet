@@ -1,7 +1,9 @@
 package com.nosota.mwallet.repository;
 
 import com.nosota.mwallet.model.TransactionSnapshot;
+import com.nosota.mwallet.model.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -52,4 +54,63 @@ public interface TransactionSnapshotRepository extends JpaRepository<Transaction
 
     @Query("SELECT COUNT(ts) FROM TransactionSnapshot ts WHERE ts.referenceId IN :referenceIds")
     long countByReferenceIdIn(@Param("referenceIds") List<UUID> referenceIds);
+
+    @Query("""
+    SELECT COALESCE(SUM(t.amount), 0) 
+    FROM TransactionSnapshot t 
+    WHERE t.walletId = :walletId 
+      AND t.snapshotDate < :olderThan 
+      AND t.status = :status 
+      AND t.isLedgerEntry = :isLedgerEntry
+    """)
+    Long findCumulativeBalance(@Param("walletId") Integer walletId,
+                               @Param("olderThan") LocalDateTime olderThan,
+                               @Param("status") String status,
+                               @Param("isLedgerEntry") Boolean isLedgerEntry);
+
+    @Query("""
+    SELECT DISTINCT t.referenceId 
+    FROM TransactionSnapshot t 
+    WHERE t.walletId = :walletId 
+      AND t.snapshotDate < :olderThan 
+      AND t.status = :status 
+      AND t.isLedgerEntry = :isLedgerEntry
+    """)
+    List<UUID> findDistinctReferenceIds(@Param("walletId") Integer walletId,
+                                        @Param("olderThan") LocalDateTime olderThan,
+                                        @Param("status") TransactionStatus status,
+                                        @Param("isLedgerEntry") Boolean isLedgerEntry);
+
+    @Modifying
+    @Query("""
+    INSERT INTO transaction_snapshot_archive
+    SELECT t FROM TransactionSnapshot t 
+    WHERE t.walletId = :walletId 
+      AND t.snapshotDate < :olderThan 
+      AND t.isLedgerEntry = :isLedgerEntry
+    """)
+    int archiveOldSnapshots(@Param("walletId") Integer walletId,
+                            @Param("olderThan") LocalDateTime olderThan,
+                            @Param("isLedgerEntry") Boolean isLedgerEntry);
+
+    @Modifying
+    @Query("""
+    DELETE FROM TransactionSnapshot t 
+    WHERE t.walletId = :walletId 
+      AND t.snapshotDate < :olderThan 
+      AND t.isLedgerEntry = :isLedgerEntry
+    """)
+    int deleteOldSnapshots(@Param("walletId") Integer walletId,
+                           @Param("olderThan") LocalDateTime olderThan,
+                           @Param("isLedgerEntry") Boolean isLedgerEntry);
+
+    // Uses COALESCE to return 0 if there are no matching rows (avoids null values).
+    @Query("SELECT COALESCE(SUM(t.amount), 0) " +
+            "FROM TransactionSnapshot t " +
+            "WHERE t.walletId = :walletId " +
+            "AND t.snapshotDate < :olderThan " +
+            "AND t.isLedgerEntry = FALSE " +
+            "AND t.status = 'CONFIRMED'")
+    Long calculateCumulativeBalance(@Param("walletId") Integer walletId,
+                                    @Param("olderThan") LocalDateTime olderThan);
 }

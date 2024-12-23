@@ -18,7 +18,6 @@ import java.util.UUID;
 public class TransactionSnapshot {
 
     @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(name = "wallet_id")
@@ -49,4 +48,7 @@ public class TransactionSnapshot {
 
     @Column(name = "description")
     private String description;
+
+    @Column(name = "is_ledger_entry")
+    private boolean isLedgerEntry;
 }
