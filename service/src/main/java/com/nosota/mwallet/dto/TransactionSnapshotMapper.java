@@ -1,7 +1,7 @@
 package com.nosota.mwallet.dto;
+
 import com.nosota.mwallet.model.TransactionSnapshot;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;

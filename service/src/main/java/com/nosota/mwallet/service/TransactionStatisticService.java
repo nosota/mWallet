@@ -1,24 +1,18 @@
 package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.dto.TransactionDTO;
-import com.nosota.mwallet.dto.TransactionMapper;
-import com.nosota.mwallet.dto.TransactionSnapshotMapper;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionSnapshot;
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.TransactionType;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

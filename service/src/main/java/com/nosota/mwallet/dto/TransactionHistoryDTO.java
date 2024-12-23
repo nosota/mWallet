@@ -1,6 +1,9 @@
 package com.nosota.mwallet.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.UUID;

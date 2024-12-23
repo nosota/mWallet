@@ -1,7 +1,9 @@
 package com.nosota.mwallet.dto;
 
 import com.nosota.mwallet.model.OwnerType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 

@@ -2,7 +2,10 @@ package com.nosota.mwallet.dto;
 
 import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

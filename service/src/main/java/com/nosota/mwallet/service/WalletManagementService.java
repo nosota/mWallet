@@ -6,7 +6,6 @@ import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;

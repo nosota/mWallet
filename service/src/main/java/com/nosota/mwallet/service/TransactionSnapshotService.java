@@ -7,7 +7,6 @@ import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -15,10 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -107,8 +106,6 @@ public class TransactionSnapshotService {
         transactionSnapshotRepository.saveAll(snapshots);
 
         // 4. Delete transactions in a batch, ensuring all snapshots were saved
-//        long savedSnapshotsCount = transactionSnapshotRepository.countByIdIn(
-//                snapshots.stream().map(TransactionSnapshot::getId).toList());
         long savedSnapshotsCount = transactionSnapshotRepository.countByWalletIdAndReferenceIds(
                 walletId,
                 snapshots.stream().map(TransactionSnapshot::getReferenceId).toList()
