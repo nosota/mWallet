@@ -1,4 +1,4 @@
-## **Wallet System - Release Notes v1.0.34**
+## **Wallet System - Release Notes v1.0.4**
 
 ### **Date:** 23.12.2024
 
@@ -17,6 +17,7 @@
    * Optimized database operations by batching and reducing redundant queries.
    * Simplified ledger entry creation and tracking, ensuring clear and auditable associations with archived snapshots.
    * Validated reference IDs before archiving, ensuring alignment with cumulative balance calculations.
+6. Added LedgerTrackingRepository for opeations under ledger_entries_tracking table.
 
 ## **Wallet System - Release Notes v1.0.3**
 
