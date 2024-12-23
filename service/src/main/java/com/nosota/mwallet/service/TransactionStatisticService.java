@@ -5,22 +5,27 @@ import com.nosota.mwallet.dto.TransactionMapper;
 import com.nosota.mwallet.dto.TransactionSnapshotMapper;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionSnapshot;
+import com.nosota.mwallet.model.TransactionStatus;
+import com.nosota.mwallet.model.TransactionType;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
 @Validated
 @AllArgsConstructor
+@Slf4j
 public class TransactionStatisticService {
     private final TransactionRepository transactionRepository;
     private final TransactionSnapshotRepository transactionSnapshotRepository;
@@ -44,8 +49,8 @@ public class TransactionStatisticService {
         // The mapping is done in the stream, so there's no need for intermediary DTO lists.
         // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
         return Stream.concat(
-                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
-                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                        transactions.stream().map(this::toDTO),
+                        snapshots.stream().map(this::toDTO))
                 .collect(Collectors.toList());
     }
 
@@ -68,8 +73,8 @@ public class TransactionStatisticService {
         // The mapping is done in the stream, so there's no need for intermediary DTO lists.
         // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
         return Stream.concat(
-                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
-                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                        transactions.stream().map(this::toDTO),
+                        snapshots.stream().map(this::toDTO))
                 .collect(Collectors.toList());
     }
 
@@ -92,8 +97,8 @@ public class TransactionStatisticService {
         // The mapping is done in the stream, so there's no need for intermediary DTO lists.
         // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
         return Stream.concat(
-                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
-                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                        transactions.stream().map(this::toDTO),
+                        snapshots.stream().map(this::toDTO))
                 .collect(Collectors.toList());
     }
 
@@ -116,8 +121,37 @@ public class TransactionStatisticService {
         // The mapping is done in the stream, so there's no need for intermediary DTO lists.
         // Since Java streams are lazy by nature, mapping only happens when we eventually collect the results, which can be more efficient memory-wise.
         return Stream.concat(
-                        transactions.stream().map(TransactionMapper.INSTANCE::toDTO),
-                        snapshots.stream().map(TransactionSnapshotMapper.INSTANCE::toDTO))
+                        transactions.stream().map(this::toDTO),
+                        snapshots.stream().map(this::toDTO))
                 .collect(Collectors.toList());
+    }
+
+    private TransactionDTO toDTO(Transaction trx) {
+        return new TransactionDTO(
+                trx.getId(),
+                trx.getReferenceId(),
+                trx.getWalletId(),
+                trx.getAmount(),
+                trx.getStatus(),
+                trx.getType(),
+                trx.getHoldReserveTimestamp(),
+                trx.getConfirmRejectTimestamp(),
+                trx.getDescription());
+    }
+
+    private TransactionDTO toDTO(TransactionSnapshot trx) {
+        // NOT mapped field:
+        //  trx.isLedgerEntry();
+        //  trx.setSnapshotDate();
+        return new TransactionDTO(
+                trx.getId(),
+                trx.getReferenceId(),
+                trx.getWalletId(),
+                trx.getAmount(),
+                trx.getStatus(),
+                trx.getType(),
+                trx.getHoldReserveTimestamp(),
+                trx.getConfirmRejectTimestamp(),
+                trx.getDescription());
     }
 }

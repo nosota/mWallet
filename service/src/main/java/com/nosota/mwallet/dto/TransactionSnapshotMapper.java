@@ -1,6 +1,7 @@
 package com.nosota.mwallet.dto;
 import com.nosota.mwallet.model.TransactionSnapshot;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.List;
 public interface TransactionSnapshotMapper {
     TransactionSnapshotMapper INSTANCE = Mappers.getMapper(TransactionSnapshotMapper.class);
 
+//    @Mapping(target = "snapshotDate", ignore = true)
+//    @Mapping(target = "isLedgerEntry", ignore = true)
     TransactionDTO toDTO(TransactionSnapshot transaction);
 
     TransactionSnapshot toEntity(TransactionDTO transactionDTO);

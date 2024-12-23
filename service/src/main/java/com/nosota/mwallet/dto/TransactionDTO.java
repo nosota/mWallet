@@ -18,7 +18,7 @@ public class TransactionDTO {
     private Long amount;
     private TransactionStatus status;
     private TransactionType type;
-    private LocalDateTime holdTimestamp;
     private LocalDateTime confirmRejectTimestamp;
+    private LocalDateTime holdReserveTimestamp;
     private String description;
 }
