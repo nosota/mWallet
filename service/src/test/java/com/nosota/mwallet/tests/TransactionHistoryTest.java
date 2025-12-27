@@ -1,20 +1,13 @@
 package com.nosota.mwallet.tests;
 
-import com.nosota.mwallet.MwalletApplication;
-import com.nosota.mwallet.container.PostgresContainer;
+import com.nosota.mwallet.TestBase;
 import com.nosota.mwallet.dto.PagedResponse;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.TransactionStatus;
 import com.nosota.mwallet.model.TransactionType;
 import com.nosota.mwallet.model.WalletType;
-import com.nosota.mwallet.service.*;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -23,40 +16,9 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest(
-        classes = MwalletApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"spring.main.allow-bean-definition-overriding=true",
-                "spring.cloud.config.enabled=false",
-                "spring.cloud.config.discovery.enabled=false"}
-)
-@Testcontainers
-@ActiveProfiles("test")
-@Import(TestAsyncConfig.class)
-public class TransactionHistoryTest {
-
-    @Autowired
-    private TransactionService transactionService;
-
-    @Autowired
-    private TransactionSnapshotService transactionSnapshotService;
-
-    @Autowired
-    private WalletBalanceService walletBalanceService;
-
-    @Autowired
-    private WalletManagementService walletManagementService;
-
-    @Autowired
-    private TransactionHistoryService transactionHistoryService;
-
+public class TransactionHistoryTest extends TestBase {
     @Autowired
     private TransferMoneyAsyncService transferMoneyAsyncService;
-
-    @BeforeAll
-    public static void startPostgresContainer() {
-        PostgresContainer.getInstance();
-    }
 
     @Test
     public void testPaginatedHistory() throws Exception {

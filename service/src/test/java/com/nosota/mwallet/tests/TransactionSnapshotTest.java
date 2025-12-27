@@ -1,58 +1,21 @@
 package com.nosota.mwallet.tests;
 
-import com.nosota.mwallet.MwalletApplication;
-import com.nosota.mwallet.container.PostgresContainer;
+import com.nosota.mwallet.TestBase;
 import com.nosota.mwallet.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.WalletType;
-import com.nosota.mwallet.service.*;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(
-        classes = MwalletApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"spring.main.allow-bean-definition-overriding=true",
-                "spring.cloud.config.enabled=false",
-                "spring.cloud.config.discovery.enabled=false"}
-)
-@Testcontainers
-@ActiveProfiles("test")
-public class TransactionSnapshotTest {
-
-    @Autowired
-    private TransactionService transactionService;
-
-    @Autowired
-    private TransactionSnapshotService transactionSnapshotService;
-
-    @Autowired
-    private WalletBalanceService walletBalanceService;
-
-    @Autowired
-    private WalletManagementService walletManagementService;
-
-    @Autowired
-    private TransactionHistoryService transactionHistoryService;
+public class TransactionSnapshotTest extends TestBase {
 
     private Integer wallet1Id;
     private Integer wallet2Id;
 
     private static Long INITIAL_BALANCE = 5000L;
-
-    @BeforeAll
-    public static void startPostgresContainer() {
-        PostgresContainer.getInstance();
-    }
 
     void setup() throws Exception {
         // Create initial wallets

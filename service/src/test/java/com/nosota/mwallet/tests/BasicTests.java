@@ -1,21 +1,12 @@
 package com.nosota.mwallet.tests;
 
-import com.nosota.mwallet.MwalletApplication;
-import com.nosota.mwallet.container.PostgresContainer;
+import com.nosota.mwallet.TestBase;
 import com.nosota.mwallet.dto.TransactionDTO;
 import com.nosota.mwallet.error.InsufficientFundsException;
 import com.nosota.mwallet.error.TransactionGroupZeroingOutException;
 import com.nosota.mwallet.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
-import com.nosota.mwallet.service.*;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.client.RestTemplateAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -24,37 +15,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(
-        classes = MwalletApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"spring.main.allow-bean-definition-overriding=true",
-                "spring.cloud.config.enabled=false",
-                "spring.cloud.config.discovery.enabled=false"}
-)
-@Testcontainers
-@ActiveProfiles("test")
-class BasicTests {
-
-    @Autowired
-    private WalletManagementService walletManagementService;
-
-    @Autowired
-    private WalletBalanceService walletBalanceService;
-
-    @Autowired
-    private TransactionService transactionService;
-
-    @Autowired
-    private TransactionSnapshotService transactionSnapshotService;
-
-    @Autowired
-    private WalletService walletService;
-
-    @BeforeAll
-    public static void startPostgresContainer() {
-        PostgresContainer.getInstance();
-    }
-
+class BasicTests extends TestBase {
     @Test
     void createWallets() {
         Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "createWallets",10L);
