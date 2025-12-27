@@ -22,21 +22,21 @@ public class SystemStatisticService
      *
      * <p>The resulting balance represents the cumulative initial balance
      * of all wallets created within the system. This initial balance might
-     * signify funds external to the system or the system's startup balance.
-     * The exact interpretation is contingent on the specific business
-     * rules and logic of systems built upon this wallet infrastructure.</p>
+     * signify funds external to the system or the system's startup balance.</p>
      *
-     * <p>Notably, internal money transfers between wallets should not
-     * affect the reconciliation balance, ensuring its constancy
-     * throughout the system's lifecycle. </p>
+     * <p>This method accounts for all finalized transaction groups (SETTLED, RELEASED, CANCELLED).
+     * According to double-entry accounting principles:
+     * - Internal transfers should sum to zero
+     * - Non-zero result indicates external funds or initial balances</p>
      *
-     * <p> NOTE: Since the function processes transactions in snapshot and in archive, it might take time! </p>
+     * <p>NOTE: This function processes all storage tiers (transaction, snapshot, archive)
+     * and might take significant time for large datasets.</p>
      *
-     * @return
+     * @return The reconciliation balance of all finalized transaction groups.
      */
     @Transactional
-    public Long getReconciliationBalanceOfAllConfirmedGroups() {
-        BigDecimal result = systemStatisticRepository.calculateReconciliationBalanceOfAllConfirmedGroups();
+    public Long getReconciliationBalanceOfAllFinalizedGroups() {
+        BigDecimal result = systemStatisticRepository.calculateReconciliationBalanceOfAllFinalizedGroups();
         result = result != null ? result : BigDecimal.ZERO;
         return result.longValueExact();
     }

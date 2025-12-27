@@ -7,7 +7,7 @@ class SystemTests extends TestBase {
 
     @Test
     public void getSystemReconciliationAmount() {
-        Long reconciliationAmount = systemStatisticService.getReconciliationBalanceOfAllConfirmedGroups();
+        Long reconciliationAmount = systemStatisticService.getReconciliationBalanceOfAllFinalizedGroups();
         System.out.println("System reconciliation amount is " + reconciliationAmount);
     }
 }

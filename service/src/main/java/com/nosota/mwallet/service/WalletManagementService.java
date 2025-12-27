@@ -72,14 +72,14 @@ public class WalletManagementService {
             Transaction initialTransaction = new Transaction();
             initialTransaction.setAmount(initialBalance);
             initialTransaction.setWalletId(newWallet.getId());
-            initialTransaction.setStatus(TransactionStatus.CONFIRMED);
+            initialTransaction.setStatus(TransactionStatus.SETTLED);
             initialTransaction.setType(TransactionType.CREDIT); // assuming it's a credit transaction for the initial balance
             initialTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
             initialTransaction.setDescription("New wallet with initial balance");
 
             // Generate a reference ID for the initial transaction.
             TransactionGroup transactionGroup = new TransactionGroup();
-            transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
+            transactionGroup.setStatus(TransactionGroupStatus.SETTLED);
             transactionGroup = transactionGroupRepository.save(transactionGroup);
             initialTransaction.setReferenceId(transactionGroup.getId());
 

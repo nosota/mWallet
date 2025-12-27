@@ -154,7 +154,7 @@ public class TransactionHistoryTest extends TestBase {
         int pageSize1f = pages1.getTotalRecords();
         PagedResponse<TransactionHistoryDTO> pages1f =
                 transactionHistoryService.getPaginatedTransactionHistory(wallet1Id, pageNumber1f, pageSize1f,
-                        List.of(TransactionType.DEBIT), List.of(TransactionStatus.CONFIRMED));
+                        List.of(TransactionType.DEBIT), List.of(TransactionStatus.SETTLED));
 
         System.out.println("-- Filtered History Wallet 1 --");
         assertEquals(pages1f.getTotalRecords(), 30L);
@@ -167,7 +167,7 @@ public class TransactionHistoryTest extends TestBase {
         int pageSize2f = pages2.getTotalRecords() * 2;
         PagedResponse<TransactionHistoryDTO> pages2f =
                 transactionHistoryService.getPaginatedTransactionHistory(wallet2Id, pageNumber2f, pageSize2f,
-                        List.of(TransactionType.CREDIT), List.of(TransactionStatus.CONFIRMED));
+                        List.of(TransactionType.CREDIT), List.of(TransactionStatus.SETTLED));
 
         System.out.println("-- Filtered History Wallet 2 --");
         assertEquals(pages2f.getTotalRecords(), 30L);

@@ -45,6 +45,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status1") TransactionStatus status1, @Param("status2") TransactionStatus status2);
 
     /**
+     * Retrieves a transaction based on the provided wallet ID, reference ID, and a single specified status.
+     *
+     * <p>This method is designed to fetch a transaction that matches the given wallet ID and reference ID,
+     * and has the specified status. Used by the ledger service to find HOLD transactions.</p>
+     *
+     * @param walletId The unique identifier of the wallet associated with the transaction.
+     * @param referenceId The unique identifier used to group or reference the transaction.
+     * @param status The status the transaction must have.
+     * @return An Optional containing the transaction if found; otherwise, an empty Optional.
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.referenceId = :referenceId AND t.status = :status")
+    Optional<Transaction> findByWalletIdAndReferenceIdAndStatuses(@Param("walletId") Integer walletId, @Param("referenceId") UUID referenceId, @Param("status") TransactionStatus status);
+
+    /**
      * Retrieves all transactions associated with a specific wallet ID and transaction status.
      *
      * @param walletId The ID of the wallet to filter transactions by.
@@ -62,24 +76,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
      */
     List<Transaction> findAllByWalletIdAndReferenceIdIn(Integer walletId, List<UUID> referenceIds);
 
-    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'SETTLED' " +
             "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY t.id ASC")
     List<Transaction> findDailyCreditOperations(@Param("walletId") Integer walletId,
                                                 @Param("startOfDay") LocalDateTime startOfDay,
                                                 @Param("date") LocalDateTime date);
 
-    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'SETTLED' " +
             "AND t.confirmRejectTimestamp BETWEEN :startOfDay AND :date ORDER BY t.id ASC")
     List<Transaction> findDailyDebitOperations(@Param("walletId") Integer walletId,
                                                @Param("startOfDay") LocalDateTime startOfDay,
                                                @Param("date") LocalDateTime date);
-    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'CONFIRMED' " +
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'CREDIT' AND t.status = 'SETTLED' " +
             "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY t.id ASC")
     List<Transaction> findCreditOperationsInRange(@Param("walletId") Integer walletId,
                                                   @Param("fromDate") LocalDateTime fromDate,
                                                   @Param("toDate") LocalDateTime toDate);
 
-    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'CONFIRMED' " +
+    @Query("SELECT t FROM Transaction t WHERE t.walletId = :walletId AND t.type = 'DEBIT' AND t.status = 'SETTLED' " +
             "AND t.confirmRejectTimestamp BETWEEN :fromDate AND :toDate ORDER BY t.id ASC")
     List<Transaction> findDebitOperationsInRange(@Param("walletId") Integer walletId,
                                                  @Param("fromDate") LocalDateTime fromDate,
@@ -87,13 +101,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
 
 
     /**
-     * Calculates the total reconciliation amount for a transaction group, which
-     * consists of the sum of both HOLD and RESERVE amounts.
+     * Calculates the total reconciliation amount for a transaction group consisting of HOLD transactions.
+     *
+     * <p>According to double-entry accounting principles, all HOLD transactions in a group must sum to zero
+     * before the group can be finalized (settled, released, or cancelled).</p>
+     *
+     * <p>Example: For a transfer of $100 from wallet A to wallet B:
+     * <ul>
+     *   <li>Wallet A: -100 (DEBIT, HOLD)</li>
+     *   <li>Wallet B: +100 (CREDIT, HOLD)</li>
+     *   <li>Sum: 0 ✓ (valid for finalization)</li>
+     * </ul>
      *
      * @param groupId The unique identifier (UUID) of the transaction group for
      *                which the reconciliation amount needs to be calculated.
-     * @return The total reconciliation amount for the transaction group.
+     * @return The total reconciliation amount for the transaction group. Must be 0 for valid group.
      */
-    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.referenceId = :groupId AND (t.status = 'HOLD' OR t.status = 'RESERVE')")
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.referenceId = :groupId AND t.status = 'HOLD'")
     Long getReconciliationAmountByGroupId(@Param("groupId") UUID groupId);
 }

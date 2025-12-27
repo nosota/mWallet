@@ -5,10 +5,12 @@ import com.nosota.mwallet.service.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -21,6 +23,7 @@ import org.testcontainers.utility.DockerImageName;
                 "spring.cloud.config.enabled=false",
                 "spring.cloud.config.discovery.enabled=false"}
 )
+@AutoConfigureMockMvc
 @Testcontainers
 @Import(TestAsyncConfig.class)
 @ActiveProfiles("test")
@@ -56,6 +59,9 @@ public abstract class TestBase {
 
     @Autowired
     protected TestRestTemplate restTemplate;
+
+    @Autowired
+    protected MockMvc mockMvc;
 
     @Autowired
     protected ObjectMapper objectMapper;

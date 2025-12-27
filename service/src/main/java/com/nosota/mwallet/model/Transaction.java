@@ -9,9 +9,25 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Transaction entity - represents an IMMUTABLE ledger entry.
+ *
+ * <p>Following banking ledger standards:
+ * <ul>
+ *   <li>Records are append-only (no updates or deletes)</li>
+ *   <li>Each entry is permanent and auditable</li>
+ *   <li>Corrections are made via offsetting entries (reversal)</li>
+ * </ul>
+ *
+ * <p>WARNING: Currently uses @Setter for convenience during construction.
+ * In production ledger system, should use Builder pattern or immutable constructor
+ * to prevent modifications after persistence.
+ *
+ * <p>TODO: Replace @Setter with @Builder and ensure no setters called after save()
+ */
 @Entity
 @Getter
-@Setter
+@Setter  // TODO: Remove and use @Builder for true immutability
 @AllArgsConstructor
 @NoArgsConstructor
 public class Transaction {

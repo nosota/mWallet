@@ -14,217 +14,306 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Service for wallet operations following banking ledger standards.
+ *
+ * <p>This service implements a two-phase transaction lifecycle:
+ * <ul>
+ *   <li>Phase 1 (HOLD): Block funds without transfer</li>
+ *   <li>Phase 2 (Final): SETTLED, RELEASED, or CANCELLED</li>
+ * </ul>
+ *
+ * <p>All transactions are immutable - new transactions are created for each state change.
+ * <p>All finalization methods (settle/release/cancel) create offsetting transactions.
+ */
 @Service
 @Validated
 @AllArgsConstructor
 @Slf4j
 public class WalletService {
-    private static final Logger LOG = LoggerFactory.getLogger(WalletService.class);
 
     private final WalletRepository walletRepository;
-
     private final TransactionRepository transactionRepository;
-
     private final WalletBalanceService walletBalanceService;
 
     /**
-     * Holds a specified amount from the given wallet, ensuring the wallet has the necessary balance.
-     * <p>
-     * This method attempts to hold a specified amount from a wallet, identified by the provided wallet ID.
-     * Before the hold operation is carried out, the available balance in the wallet is checked to ensure
-     * that the hold amount does not exceed the available balance. If the wallet has insufficient funds or
-     * if the wallet is not found, appropriate exceptions are thrown.
-     * </p>
-     * <p>
-     * If the hold operation is successful, a new {@link Transaction} record with a status of "HOLD"
-     * is created and saved to the database, and the transaction's ID is returned.
-     * </p>
+     * Holds (blocks) a specified amount from the wallet for debit operation.
      *
-     * @param walletId The unique identifier (ID) of the wallet from which the amount is to be held.
-     * @param amount The amount to be held from the wallet. This amount should be positive.
-     * @param referenceId A unique identifier (UUID) representing the reference or context for this hold operation.
-     * @return The unique identifier (ID) of the created transaction representing the hold operation.
-     * @throws WalletNotFoundException if the specified wallet ID does not correspond to an existing wallet.
-     * @throws InsufficientFundsException if the wallet does not have sufficient funds to cover the hold amount.
+     * <p>This is Phase 1 of a two-phase transaction. The amount is blocked from the sender's
+     * available balance but not yet transferred. The wallet must have sufficient funds.
+     *
+     * <p>Creates a transaction:
+     * <ul>
+     *   <li>Amount: negative (debit)</li>
+     *   <li>Type: DEBIT</li>
+     *   <li>Status: HOLD</li>
+     * </ul>
+     *
+     * <p>Example: Hold $100 from wallet for payment
+     * → Creates transaction: -100, DEBIT, HOLD
+     *
+     * @param walletId    The unique identifier of the wallet to debit from
+     * @param amount      The amount to hold (must be positive, will be negated internally)
+     * @param referenceId UUID grouping related transactions (typically matches transaction group ID)
+     * @return The ID of the created HOLD transaction
+     * @throws WalletNotFoundException    if the wallet does not exist
+     * @throws InsufficientFundsException if the wallet has insufficient available balance
      */
     @Transactional
-    public Integer hold(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId) throws WalletNotFoundException, InsufficientFundsException {
-        Wallet senderWallet = walletRepository.findById(walletId)
+    public Integer holdDebit(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId)
+            throws WalletNotFoundException, InsufficientFundsException {
+
+        // Verify wallet exists
+        Wallet wallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        // Ensure the sender has enough balance
+        // Check sufficient funds (pessimistic locking handled by balance service)
         Long availableBalance = walletBalanceService.getAvailableBalance(walletId);
         if (availableBalance < amount) {
-            throw new InsufficientFundsException("Insufficient funds in wallet with ID " + walletId);
+            throw new InsufficientFundsException(
+                    String.format("Insufficient funds in wallet %d: available=%d, required=%d",
+                            walletId, availableBalance, amount));
         }
 
+        // Create HOLD transaction (negative amount for debit)
         Transaction holdTransaction = new Transaction();
-        holdTransaction.setWalletId(senderWallet.getId());
+        holdTransaction.setWalletId(wallet.getId());
         holdTransaction.setAmount(-amount);
-        holdTransaction.setStatus(TransactionStatus.HOLD);
         holdTransaction.setType(TransactionType.DEBIT);
+        holdTransaction.setStatus(TransactionStatus.HOLD);
         holdTransaction.setReferenceId(referenceId);
         holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
 
         Transaction savedTransaction = transactionRepository.save(holdTransaction);
 
+        log.info("Held debit: walletId={}, amount={}, referenceId={}, transactionId={}",
+                walletId, amount, referenceId, savedTransaction.getId());
+
         return savedTransaction.getId();
     }
 
     /**
-     * Reserves a specified amount for the given wallet.
-     * <p>
-     * This method creates a new {@link Transaction} with a status of "RESERVE" for a wallet, identified
-     * by the provided wallet ID. The transaction signifies the reservation of a certain amount for
-     * future use. No balance checks are done for reservation, as this operation typically denotes incoming funds.
-     * </p>
-     * <p>
-     * If the wallet with the specified ID is not found in the database, a {@link WalletNotFoundException} is thrown.
-     * If the reservation operation is successful, the ID of the created transaction is returned.
-     * </p>
+     * Holds (prepares) a specified amount for the wallet for credit operation.
      *
-     * @param walletId The unique identifier (ID) of the wallet for which the amount is to be reserved.
-     * @param amount The amount to be reserved. This value should be positive, denoting an incoming or addition of funds.
-     * @param referenceId A unique identifier (UUID) representing the reference or context for this reservation operation.
-     * @return The unique identifier (ID) of the created transaction representing the reservation.
-     * @throws WalletNotFoundException if the specified wallet ID does not correspond to an existing wallet.
+     * <p>This is Phase 1 of a two-phase transaction. The amount is prepared for the recipient
+     * but not yet added to their available balance. No balance check is performed (incoming funds).
+     *
+     * <p>Creates a transaction:
+     * <ul>
+     *   <li>Amount: positive (credit)</li>
+     *   <li>Type: CREDIT</li>
+     *   <li>Status: HOLD</li>
+     * </ul>
+     *
+     * <p>Example: Hold $100 for wallet (incoming payment)
+     * → Creates transaction: +100, CREDIT, HOLD
+     *
+     * @param walletId    The unique identifier of the wallet to credit to
+     * @param amount      The amount to hold (must be positive)
+     * @param referenceId UUID grouping related transactions (typically matches transaction group ID)
+     * @return The ID of the created HOLD transaction
+     * @throws WalletNotFoundException if the wallet does not exist
      */
     @Transactional
-    public Integer reserve(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId) throws WalletNotFoundException {
-        // Check if the wallet exists and if not, throw WalletNotFoundException
-        Wallet senderWallet = walletRepository.findById(walletId)
+    public Integer holdCredit(@NotNull Integer walletId, @Positive Long amount, @NotNull UUID referenceId)
+            throws WalletNotFoundException {
+
+        // Verify wallet exists
+        Wallet wallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        Transaction reserveTransaction = new Transaction();
-        reserveTransaction.setWalletId(walletId);
-        reserveTransaction.setAmount(amount);
-        reserveTransaction.setStatus(TransactionStatus.RESERVE);
-        reserveTransaction.setReferenceId(referenceId);
-        reserveTransaction.setType(TransactionType.CREDIT);
-        reserveTransaction.setHoldReserveTimestamp(LocalDateTime.now());
+        // Create HOLD transaction (positive amount for credit)
+        Transaction holdTransaction = new Transaction();
+        holdTransaction.setWalletId(walletId);
+        holdTransaction.setAmount(amount);
+        holdTransaction.setType(TransactionType.CREDIT);
+        holdTransaction.setStatus(TransactionStatus.HOLD);
+        holdTransaction.setReferenceId(referenceId);
+        holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
 
-        reserveTransaction = transactionRepository.save(reserveTransaction);
-        return reserveTransaction.getId();
-    }
+        Transaction savedTransaction = transactionRepository.save(holdTransaction);
 
-    /**
-     * Confirms a previously held or reserved transaction for a given wallet.
-     * <p>
-     * The method attempts to find an existing transaction with the status "HOLD" or "RESERVE" associated with
-     * the specified wallet ID and reference ID. If found, a new transaction is created with the status "CONFIRMED"
-     * to mark the successful completion of the operation.
-     * </p>
-     * <p>
-     * If no corresponding "HOLD" or "RESERVE" transaction is found for the given wallet ID and reference ID,
-     * a {@link TransactionNotFoundException} is thrown.
-     * </p>
-     *
-     * @param walletId The unique identifier (ID) of the wallet associated with the transaction.
-     * @param referenceId The unique identifier (UUID) used during the initial HOLD or RESERVE operation.
-     * @return The unique identifier (ID) of the created transaction representing the confirmation.
-     * @throws TransactionNotFoundException if no corresponding "HOLD" or "RESERVE" transaction is found for
-     *         the specified wallet ID and reference ID.
-     */
-    @Transactional
-    public Integer confirm(@NotNull Integer walletId, @NotNull UUID referenceId) throws TransactionNotFoundException {
-        // Check if a HOLD transaction exists for the given referenceId
-        Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId,
-                referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
-
-        if (!transactionOpt.isPresent()) {
-            throw new TransactionNotFoundException("Hold transaction not found for reference ID " + referenceId + " and wallet ID " + walletId);
-        }
-
-        Transaction holdTransaction = transactionOpt.get();
-
-        // Create a new confirmed transaction
-        Transaction confirmTransaction = new Transaction();
-        confirmTransaction.setWalletId(holdTransaction.getWalletId());
-        confirmTransaction.setAmount(holdTransaction.getAmount());
-        confirmTransaction.setStatus(TransactionStatus.CONFIRMED);
-        confirmTransaction.setType(holdTransaction.getType());
-        confirmTransaction.setReferenceId(referenceId);
-        confirmTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
-
-        Transaction savedTransaction = transactionRepository.save(confirmTransaction);
+        log.info("Held credit: walletId={}, amount={}, referenceId={}, transactionId={}",
+                walletId, amount, referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
 
     /**
-     * Rejects a previously held or reserved transaction for a given wallet.
-     * <p>
-     * This method checks for the presence of an existing transaction with the status "HOLD" or "RESERVE" associated
-     * with the provided wallet ID and reference ID. If found, a new transaction is created with the status "REJECTED"
-     * to indicate the operation was not successfully completed.
-     * </p>
-     * <p>
-     * If no "HOLD" or "RESERVE" transaction is found for the given wallet ID and reference ID,
-     * a {@link TransactionNotFoundException} is thrown.
-     * </p>
+     * Settles (finalizes) a previously held transaction in favor of the recipient.
      *
-     * @param walletId The unique identifier (ID) of the wallet associated with the transaction.
-     * @param referenceId The unique identifier (UUID) used during the initial HOLD or RESERVE operation.
-     * @return The unique identifier (ID) of the created transaction representing the rejection.
-     * @throws TransactionNotFoundException if no corresponding "HOLD" or "RESERVE" transaction is found for
-     *         the specified wallet ID and reference ID.
+     * <p>This is Phase 2 (success path) of a two-phase transaction. The blocked funds are
+     * transferred to the recipient. For debit transactions, funds are removed from sender's
+     * available balance. For credit transactions, funds are added to recipient's available balance.
+     *
+     * <p>Creates a transaction:
+     * <ul>
+     *   <li>Amount: same as HOLD transaction</li>
+     *   <li>Type: same as HOLD transaction</li>
+     *   <li>Status: SETTLED (final state)</li>
+     * </ul>
+     *
+     * <p>Example: Settle held $100 debit
+     * → Finds: -100, DEBIT, HOLD
+     * → Creates: -100, DEBIT, SETTLED
+     *
+     * @param walletId    The unique identifier of the wallet
+     * @param referenceId UUID of the transaction group to settle
+     * @return The ID of the created SETTLED transaction
+     * @throws TransactionNotFoundException if no HOLD transaction exists for this wallet and reference
      */
     @Transactional
-    public Integer reject(@NotNull Integer walletId, @NotNull UUID referenceId) throws TransactionNotFoundException {
-        if(referenceId == null) {
-            throw new IllegalArgumentException("referenceId must be not null.");
-        }
+    public Integer settle(@NotNull Integer walletId, @NotNull UUID referenceId)
+            throws TransactionNotFoundException {
 
-        // Check if a HOLD transaction exists for the given referenceId
-        Optional<Transaction> transactionOpt = transactionRepository.findByWalletIdAndReferenceIdAndStatuses(walletId,
-                referenceId, TransactionStatus.HOLD, TransactionStatus.RESERVE);
+        // Find the HOLD transaction
+        Transaction holdTransaction = transactionRepository
+                .findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                        String.format("HOLD transaction not found for wallet %d and reference %s",
+                                walletId, referenceId)));
 
-        if (!transactionOpt.isPresent()) {
-            throw new TransactionNotFoundException("Hold transaction not found for reference ID " + referenceId +
-                    " and wallet ID " + walletId);
-        }
+        // Create SETTLED transaction with same amount and type
+        Transaction settleTransaction = new Transaction();
+        settleTransaction.setWalletId(holdTransaction.getWalletId());
+        settleTransaction.setAmount(holdTransaction.getAmount());
+        settleTransaction.setType(holdTransaction.getType());
+        settleTransaction.setStatus(TransactionStatus.SETTLED);
+        settleTransaction.setReferenceId(referenceId);
+        settleTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
 
-        Transaction holdTransaction = transactionOpt.get();
+        Transaction savedTransaction = transactionRepository.save(settleTransaction);
 
-        // Create a new rejected transaction
-        Transaction rejectTransaction = new Transaction();
-        rejectTransaction.setWalletId(holdTransaction.getWalletId());
-        rejectTransaction.setAmount(holdTransaction.getAmount());
-        rejectTransaction.setStatus(TransactionStatus.REJECTED);
-        rejectTransaction.setType(holdTransaction.getType());
-        rejectTransaction.setReferenceId(referenceId);
-        rejectTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
-
-        Transaction savedTransaction = transactionRepository.save(rejectTransaction);
+        log.info("Settled transaction: walletId={}, amount={}, type={}, referenceId={}, transactionId={}",
+                walletId, holdTransaction.getAmount(), holdTransaction.getType(), referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
 
     /**
-     * Retrieves the {@link Wallet} entity associated with the specified wallet ID.
-     * <p>
-     * This method attempts to fetch the wallet using the provided ID from the underlying repository.
-     * </p>
-     * <p>
-     * If no wallet is found for the given ID, an {@link IllegalArgumentException} is thrown with a
-     * message indicating an invalid wallet ID.
-     * </p>
+     * Releases (returns) previously held funds back to sender after dispute resolution.
      *
-     * @param walletId The unique identifier (ID) of the wallet to be retrieved.
-     * @return The {@link Wallet} entity corresponding to the provided ID.
-     * @throws IllegalArgumentException if no wallet is found for the specified ID.
+     * <p>This is Phase 2 (dispute/return path) of a two-phase transaction. The blocked funds
+     * are returned to their original account by creating an offsetting transaction in the
+     * OPPOSITE direction.
+     *
+     * <p>Creates a transaction:
+     * <ul>
+     *   <li>Amount: OPPOSITE sign of HOLD transaction</li>
+     *   <li>Type: OPPOSITE type of HOLD transaction (DEBIT ↔ CREDIT)</li>
+     *   <li>Status: RELEASED (final state)</li>
+     * </ul>
+     *
+     * <p>Example: Release held $100 debit (return funds to sender)
+     * → Finds: -100, DEBIT, HOLD
+     * → Creates: +100, CREDIT, RELEASED (returns money)
+     *
+     * <p>Use case: Payment was held, conditions were met, but after investigation/dispute
+     * it was decided to return the funds to the sender.
+     *
+     * @param walletId    The unique identifier of the wallet
+     * @param referenceId UUID of the transaction group to release
+     * @return The ID of the created RELEASED transaction
+     * @throws TransactionNotFoundException if no HOLD transaction exists for this wallet and reference
      */
-    private Wallet getWallet(@NotNull Integer walletId) {
-        return walletRepository.findById(walletId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid wallet ID"));
+    @Transactional
+    public Integer release(@NotNull Integer walletId, @NotNull UUID referenceId)
+            throws TransactionNotFoundException {
+
+        // Find the HOLD transaction
+        Transaction holdTransaction = transactionRepository
+                .findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                        String.format("HOLD transaction not found for wallet %d and reference %s",
+                                walletId, referenceId)));
+
+        // Create RELEASED transaction with OPPOSITE amount and type
+        TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
+                ? TransactionType.CREDIT
+                : TransactionType.DEBIT;
+
+        Transaction releaseTransaction = new Transaction();
+        releaseTransaction.setWalletId(holdTransaction.getWalletId());
+        releaseTransaction.setAmount(-holdTransaction.getAmount()); // Flip sign
+        releaseTransaction.setType(oppositeType); // Flip type
+        releaseTransaction.setStatus(TransactionStatus.RELEASED);
+        releaseTransaction.setReferenceId(referenceId);
+        releaseTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+
+        Transaction savedTransaction = transactionRepository.save(releaseTransaction);
+
+        log.info("Released transaction: walletId={}, originalAmount={}, releaseAmount={}, originalType={}, releaseType={}, referenceId={}, transactionId={}",
+                walletId, holdTransaction.getAmount(), releaseTransaction.getAmount(),
+                holdTransaction.getType(), releaseTransaction.getType(), referenceId, savedTransaction.getId());
+
+        return savedTransaction.getId();
+    }
+
+    /**
+     * Cancels a previously held transaction before execution conditions were met.
+     *
+     * <p>This is Phase 2 (cancellation path) of a two-phase transaction. The blocked funds
+     * are returned to their original account by creating an offsetting transaction in the
+     * OPPOSITE direction.
+     *
+     * <p>Creates a transaction:
+     * <ul>
+     *   <li>Amount: OPPOSITE sign of HOLD transaction</li>
+     *   <li>Type: OPPOSITE type of HOLD transaction (DEBIT ↔ CREDIT)</li>
+     *   <li>Status: CANCELLED (final state)</li>
+     * </ul>
+     *
+     * <p>Example: Cancel held $100 debit (return funds to sender)
+     * → Finds: -100, DEBIT, HOLD
+     * → Creates: +100, CREDIT, CANCELLED (returns money)
+     *
+     * <p>Use case: Payment was held, but conditions were never met (e.g., timeout, user cancelled,
+     * validation failed), so the operation is cancelled before settlement.
+     *
+     * <p>Difference from release(): Cancel is used when conditions were never met,
+     * release is used when conditions were met but funds are returned after dispute/investigation.
+     *
+     * @param walletId    The unique identifier of the wallet
+     * @param referenceId UUID of the transaction group to cancel
+     * @return The ID of the created CANCELLED transaction
+     * @throws TransactionNotFoundException if no HOLD transaction exists for this wallet and reference
+     */
+    @Transactional
+    public Integer cancel(@NotNull Integer walletId, @NotNull UUID referenceId)
+            throws TransactionNotFoundException {
+
+        // Find the HOLD transaction
+        Transaction holdTransaction = transactionRepository
+                .findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                        String.format("HOLD transaction not found for wallet %d and reference %s",
+                                walletId, referenceId)));
+
+        // Create CANCELLED transaction with OPPOSITE amount and type
+        TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
+                ? TransactionType.CREDIT
+                : TransactionType.DEBIT;
+
+        Transaction cancelTransaction = new Transaction();
+        cancelTransaction.setWalletId(holdTransaction.getWalletId());
+        cancelTransaction.setAmount(-holdTransaction.getAmount()); // Flip sign
+        cancelTransaction.setType(oppositeType); // Flip type
+        cancelTransaction.setStatus(TransactionStatus.CANCELLED);
+        cancelTransaction.setReferenceId(referenceId);
+        cancelTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+
+        Transaction savedTransaction = transactionRepository.save(cancelTransaction);
+
+        log.info("Cancelled transaction: walletId={}, originalAmount={}, cancelAmount={}, originalType={}, cancelType={}, referenceId={}, transactionId={}",
+                walletId, holdTransaction.getAmount(), cancelTransaction.getAmount(),
+                holdTransaction.getType(), cancelTransaction.getType(), referenceId, savedTransaction.getId());
+
+        return savedTransaction.getId();
     }
 }

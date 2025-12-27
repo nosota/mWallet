@@ -25,36 +25,40 @@ public class WalletBalanceService {
      * Retrieves the available balance of a wallet with the given ID.
      *
      * <p>
-     * The method calculates the available balance by considering both confirmed transactions and amounts
-     * currently held for transactions that are not yet completed. The confirmed transactions include those
-     * from both the transaction and transaction_snapshot tables with a status of 'CONFIRMED'.
+     * The method calculates the available balance following banking ledger standards:
+     * Available Balance = Sum(SETTLED transactions) - Sum(HOLD transactions for IN_PROGRESS groups)
      * </p>
      *
      * <p>
      * To calculate the available balance:
-     * 1. Sum up the amounts of all 'CONFIRMED' transactions from both transaction and transaction_snapshot tables.
-     * 2. Subtract the sum of amounts of 'HOLD' transactions that are part of transaction groups that are still in progress.
-     * 3. Reserved amounts for ongoing transactions are ignored in this calculation as they do not affect the available balance.
+     * 1. Sum up the amounts of all SETTLED transactions from both transaction and transaction_snapshot tables.
+     * 2. Subtract the sum of amounts of HOLD transactions that are part of transaction groups with IN_PROGRESS status.
+     * 3. RELEASED and CANCELLED transactions net to zero (opposite direction) and don't affect balance.
+     * </p>
+     *
+     * <p>
+     * Note: SETTLED is the only final status that affects balance. RELEASED and CANCELLED transactions
+     * create offsetting entries that return funds to their original location, resulting in net zero effect.
      * </p>
      *
      * @param walletId The unique identifier (ID) of the wallet whose available balance is to be retrieved.
      *                 Must not be {@code null}.
      *
-     * @return The available balance of the wallet. It is the difference between the confirmed balance
-     *         and the amount on hold for incomplete transactions.
+     * @return The available balance of the wallet. It is the difference between the settled balance
+     *         and the amount on hold for incomplete transaction groups.
      *
      * @throws IllegalArgumentException If {@code walletId} is {@code null}.
      */
     @Transactional
     public Long getAvailableBalance(@NotNull Integer walletId) {
-        // 1. Get confirmed balance.
+        // 1. Get settled balance (only SETTLED transactions affect balance).
         String sql = """
             SELECT
                 SUM(amount)
             FROM (
-                SELECT amount FROM transaction WHERE wallet_id = :walletId AND status = 'CONFIRMED'
+                SELECT amount FROM transaction WHERE wallet_id = :walletId AND status = 'SETTLED'
                 UNION ALL
-                SELECT amount FROM transaction_snapshot WHERE wallet_id = :walletId AND status = 'CONFIRMED'
+                SELECT amount FROM transaction_snapshot WHERE wallet_id = :walletId AND status = 'SETTLED'
             ) AS combined_data
         """;
 
@@ -62,18 +66,17 @@ public class WalletBalanceService {
         query.setParameter("walletId", walletId);
 
         BigDecimal result = (BigDecimal) query.getSingleResult();
-        Long confirmedBalance = 0L;
+        Long settledBalance = 0L;
         if (result != null) {
-            confirmedBalance = result.longValueExact();
+            settledBalance = result.longValueExact();
         }
 
-        // 2. Get HOLD balance of currently running transactions. The money is not available, they are held.
+        // 2. Get HOLD balance of currently IN_PROGRESS transaction groups.
+        // These funds are blocked and not yet available.
         Long ongoingTransactionBalance = getHoldAmountForIncompleteTransactionGroups(walletId);
 
-        // 3. RESERVED amounts of currently running transactions are ignored.
-
-        // 4. Calculate currently available balance.
-        Long availableBalance = confirmedBalance - ongoingTransactionBalance;
+        // 3. Calculate currently available balance.
+        Long availableBalance = settledBalance - ongoingTransactionBalance;
 
         return availableBalance;
     }
@@ -88,27 +91,20 @@ public class WalletBalanceService {
         return transactionSnapshotRepository.getHoldBalanceForWallet(walletId);
     }
 
-    /**
-     * Retrieves the sum of all RESERVED transaction amounts for the specified wallet.
-     *
-     * @param walletId The unique identifier (ID) of the wallet.
-     * @return The total of RESERVED amounts. If no transactions are found, returns 0.
-     */
-    public Long getReservedBalanceForWallet(@NotNull Integer walletId) {
-        return transactionSnapshotRepository.getReservedBalanceForWallet(walletId);
-    }
-
     protected Long getHoldAmountForIncompleteTransactionGroups(@NotNull Integer walletId) {
+        // Only DEBIT HOLD transactions reduce available balance
+        // CREDIT HOLD transactions don't affect available balance until settlement
         String sql = """
             SELECT
                 SUM(t.amount)
-            FROM 
+            FROM
                 transaction t
-            JOIN 
+            JOIN
                 transaction_group tg ON t.reference_id = tg.id
-            WHERE 
-                t.wallet_id = :walletId AND 
+            WHERE
+                t.wallet_id = :walletId AND
                 t.status = 'HOLD' AND
+                t.type = 'DEBIT' AND
                 tg.status = 'IN_PROGRESS'
         """;
 
@@ -117,7 +113,7 @@ public class WalletBalanceService {
 
         BigDecimal result = (BigDecimal) query.getSingleResult();
         if (result != null) {
-            return - result.longValueExact(); // make the value positive
+            return - result.longValueExact(); // DEBIT is negative, invert to positive for subtraction
         } else {
             return 0L;
         }

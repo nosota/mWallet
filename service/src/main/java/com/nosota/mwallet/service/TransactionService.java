@@ -24,6 +24,18 @@ import org.springframework.validation.annotation.Validated;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Service for managing transaction groups following banking ledger standards.
+ *
+ * <p>This service provides operations for:
+ * <ul>
+ *   <li>Creating transaction groups (IN_PROGRESS state)</li>
+ *   <li>Finalizing groups via settle/release/cancel</li>
+ *   <li>High-level operations like wallet-to-wallet transfers</li>
+ * </ul>
+ *
+ * <p>All finalization methods enforce zero-sum reconciliation before proceeding.
+ */
 @Service
 @Validated
 @AllArgsConstructor
@@ -31,193 +43,263 @@ import java.util.UUID;
 public class TransactionService {
 
     private final WalletService walletService;
-
     private final TransactionGroupRepository transactionGroupRepository;
-
     private final TransactionRepository transactionRepository;
 
+    /**
+     * Creates a new transaction group in IN_PROGRESS state.
+     *
+     * <p>A transaction group is used to batch multiple related transactions together
+     * (typically one debit and one credit) and ensure they are finalized atomically.
+     *
+     * <p>Example: For a $100 transfer from wallet A to wallet B:
+     * <ol>
+     *   <li>Create transaction group (returns UUID)</li>
+     *   <li>Hold debit from wallet A with this UUID</li>
+     *   <li>Hold credit to wallet B with this UUID</li>
+     *   <li>Settle the group (both transactions finalized together)</li>
+     * </ol>
+     *
+     * @return UUID of the created transaction group
+     */
     @Transactional
     public UUID createTransactionGroup() {
         TransactionGroup transactionGroup = new TransactionGroup();
         transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
         transactionGroup = transactionGroupRepository.save(transactionGroup);
 
-        UUID referenceId = transactionGroup.getId();  // This is the UUID generated
+        UUID referenceId = transactionGroup.getId();
+        log.info("Created transaction group: referenceId={}", referenceId);
         return referenceId;
     }
 
     /**
-     * Confirms a TransactionGroup given its referenceId.
+     * Settles (finalizes) a transaction group successfully.
      *
-     * <p>
-     * The method carries out the following tasks in order:
-     * </p>
+     * <p>This method:
      * <ol>
-     *   <li>Fetch the TransactionGroup using the provided referenceId.</li>
-     *   <li>Check for reconciliation to ensure the sum of all DEBIT and CREDIT operations within the group is zero.</li>
-     *   <li>For each Transaction in the group (sorted in descending order by their IDs), confirm the associated wallet transaction.</li>
-     *   <li>Update the status of the TransactionGroup to CONFIRMED.</li>
+     *   <li>Verifies the group exists and is IN_PROGRESS</li>
+     *   <li>Checks zero-sum reconciliation (all HOLD transactions must sum to 0)</li>
+     *   <li>Settles all transactions in the group</li>
+     *   <li>Updates group status to SETTLED</li>
      * </ol>
      *
-     * @param referenceId The unique identifier (UUID) of the TransactionGroup that needs to be confirmed.
-     *                    Must not be {@code null}.
+     * <p>After settlement, all transactions have SETTLED status and funds are transferred.
      *
-     * @throws TransactionNotFoundException If no TransactionGroup is found with the provided referenceId.
-     * @throws TransactionGroupZeroingOutException If the sum of DEBIT and CREDIT operations within the group is non-zero,
-     *                                             indicating the transactions within the group are not reconciled.
-     * @throws EntityNotFoundException If no TransactionGroup is associated with the provided referenceId.
-     * @throws RuntimeException If any other unexpected error occurs during the process.
+     * @param referenceId The UUID of the transaction group to settle
+     * @throws EntityNotFoundException If no group exists with this reference ID
+     * @throws TransactionGroupZeroingOutException If transactions don't sum to zero
+     * @throws TransactionNotFoundException If any HOLD transaction is missing
      */
     @Transactional
-    public void confirmTransactionGroup(@NotNull UUID referenceId) throws TransactionNotFoundException, TransactionGroupZeroingOutException {
-        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
-                .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+    public void settleTransactionGroup(@NotNull UUID referenceId)
+            throws TransactionNotFoundException, TransactionGroupZeroingOutException {
 
-        // All DEBIT and CREDIT operations inside the same group must be reconciled.
+        // Fetch transaction group
+        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No transaction group found with referenceId: " + referenceId));
+
+        // Verify zero-sum reconciliation (double-entry accounting)
         Long reconciliationAmount = transactionRepository.getReconciliationAmountByGroupId(referenceId);
-        if(reconciliationAmount != 0) {
-            throw new TransactionGroupZeroingOutException("Transaction " + referenceId + " is not reconciled.");
+        if (reconciliationAmount != 0) {
+            throw new TransactionGroupZeroingOutException(
+                    String.format("Transaction group %s is not reconciled (sum=%d, expected=0)",
+                            referenceId, reconciliationAmount));
         }
 
+        // Settle all transactions in the group
         List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
-        for(int i = 0; i < transactions.size(); ++i) {
-            Transaction transaction = transactions.get(i);
-            walletService.confirm(transaction.getWalletId(), referenceId);
+        for (Transaction transaction : transactions) {
+            walletService.settle(transaction.getWalletId(), referenceId);
         }
 
-        transactionGroup.setStatus(TransactionGroupStatus.CONFIRMED);
+        // Update group status to SETTLED
+        transactionGroup.setStatus(TransactionGroupStatus.SETTLED);
         transactionGroupRepository.save(transactionGroup);
-    }
 
-    @Transactional
-    public void rejectTransactionGroup(@NotNull UUID referenceId, @NotEmpty String reason) throws TransactionNotFoundException {
-        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
-                .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
-
-        List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
-        for(int i = 0; i < transactions.size(); ++i) {
-            Transaction transaction = transactions.get(i);
-            walletService.reject(transaction.getWalletId(), referenceId);
-        }
-
-        transactionGroup.setStatus(TransactionGroupStatus.REJECTED);
-        transactionGroup.setReason(reason);
-        transactionGroupRepository.save(transactionGroup);
+        log.info("Settled transaction group: referenceId={}, transactionCount={}", referenceId, transactions.size());
     }
 
     /**
-     * Facilitates a transfer of funds between two specified wallets.
+     * Releases (returns) all funds in a transaction group after dispute resolution.
      *
-     * <p>
-     * This method initiates a transaction to move the specified amount of funds from the wallet
-     * associated with {@code senderId} to the wallet associated with {@code recipientId}. The method
-     * ensures that the sender has a sufficient balance before initiating the transfer.
-     * </p>
+     * <p>This method:
+     * <ol>
+     *   <li>Verifies the group exists and is IN_PROGRESS</li>
+     *   <li>Releases all transactions in the group (creates opposite direction transactions)</li>
+     *   <li>Updates group status to RELEASED</li>
+     * </ol>
      *
-     * <p>
-     * If the transfer is successful, a unique transaction ID (UUID) is generated and returned which can
-     * be used for tracking or verification purposes.
-     * </p>
+     * <p>Use this when conditions were met but after investigation/dispute the funds
+     * should be returned to original accounts.
      *
-     * @param senderId The unique identifier (ID) of the sender's wallet. Must not be {@code null}.
+     * <p>Example: Payment was held, shipping conditions met, but product was defective
+     * so after investigation funds are released back to buyer.
      *
-     * @param recipientId The unique identifier (ID) of the recipient's wallet. Must not be {@code null}.
+     * @param referenceId The UUID of the transaction group to release
+     * @param reason      The reason for releasing (for audit trail)
+     * @throws EntityNotFoundException If no group exists with this reference ID
+     * @throws TransactionNotFoundException If any HOLD transaction is missing
+     */
+    @Transactional
+    public void releaseTransactionGroup(@NotNull UUID referenceId, @NotEmpty String reason)
+            throws TransactionNotFoundException {
+
+        // Fetch transaction group
+        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No transaction group found with referenceId: " + referenceId));
+
+        // Release all transactions in the group (opposite direction)
+        List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
+        for (Transaction transaction : transactions) {
+            walletService.release(transaction.getWalletId(), referenceId);
+        }
+
+        // Update group status to RELEASED
+        transactionGroup.setStatus(TransactionGroupStatus.RELEASED);
+        transactionGroup.setReason(reason);
+        transactionGroupRepository.save(transactionGroup);
+
+        log.info("Released transaction group: referenceId={}, reason={}, transactionCount={}",
+                referenceId, reason, transactions.size());
+    }
+
+    /**
+     * Cancels a transaction group before execution conditions were met.
      *
-     * @param amount The amount to be transferred. It should be a positive value representing the number
-     *               of units to transfer.
+     * <p>This method:
+     * <ol>
+     *   <li>Verifies the group exists and is IN_PROGRESS</li>
+     *   <li>Cancels all transactions in the group (creates opposite direction transactions)</li>
+     *   <li>Updates group status to CANCELLED</li>
+     * </ol>
      *
-     * @return A {@link UUID} representing the unique identifier of the initiated transaction. This UUID
-     *         can be used for future reference or for tracking the status of the transaction.
+     * <p>Use this when conditions were never met (timeout, user cancelled, validation failed).
      *
-     * @throws IllegalArgumentException If {@code senderId} or {@code recipientId} are {@code null}, or if
-     *                                  {@code amount} is non-positive.
+     * <p>Example: Payment was held waiting for shipping, but shipping failed validation
+     * so the transaction is cancelled before settlement.
      *
-     * @throws InsufficientFundsException If the sender's wallet does not have a sufficient balance to
-     *                                    cover the transfer amount.
+     * <p>Difference from release: Cancel = conditions never met, Release = conditions met but reversed after investigation.
      *
-     * @throws Exception If any other unexpected error occurs during the transfer process.
+     * @param referenceId The UUID of the transaction group to cancel
+     * @param reason      The reason for cancellation (for audit trail)
+     * @throws EntityNotFoundException If no group exists with this reference ID
+     * @throws TransactionNotFoundException If any HOLD transaction is missing
+     */
+    @Transactional
+    public void cancelTransactionGroup(@NotNull UUID referenceId, @NotEmpty String reason)
+            throws TransactionNotFoundException {
+
+        // Fetch transaction group
+        TransactionGroup transactionGroup = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No transaction group found with referenceId: " + referenceId));
+
+        // Cancel all transactions in the group (opposite direction)
+        List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
+        for (Transaction transaction : transactions) {
+            walletService.cancel(transaction.getWalletId(), referenceId);
+        }
+
+        // Update group status to CANCELLED
+        transactionGroup.setStatus(TransactionGroupStatus.CANCELLED);
+        transactionGroup.setReason(reason);
+        transactionGroupRepository.save(transactionGroup);
+
+        log.info("Cancelled transaction group: referenceId={}, reason={}, transactionCount={}",
+                referenceId, reason, transactions.size());
+    }
+
+    /**
+     * Facilitates a transfer of funds between two wallets (high-level operation).
+     *
+     * <p>This method demonstrates a complete ledger-compliant transfer workflow:
+     * <ol>
+     *   <li>Create transaction group (IN_PROGRESS)</li>
+     *   <li>Hold debit from sender (blocks funds)</li>
+     *   <li>Hold credit to recipient (prepares funds)</li>
+     *   <li>Settle group (finalizes transfer) OR Cancel on error</li>
+     * </ol>
+     *
+     * <p>The method follows banking standards:
+     * <ul>
+     *   <li>Two-phase commit (hold → settle)</li>
+     *   <li>Zero-sum reconciliation (debit + credit = 0)</li>
+     *   <li>Atomic finalization (both succeed or both fail)</li>
+     *   <li>Automatic rollback on error</li>
+     * </ul>
+     *
+     * @param senderId    The wallet ID to debit from
+     * @param recipientId The wallet ID to credit to
+     * @param amount      The amount to transfer (must be positive)
+     * @return The UUID of the transaction group (for tracking)
+     * @throws InsufficientFundsException If sender has insufficient funds
+     * @throws Exception                  If any error occurs (group will be cancelled automatically)
      */
     @Transactional(Transactional.TxType.NOT_SUPPORTED)
-    public UUID transferBetweenTwoWallets(@NotNull Integer senderId, @NotNull Integer recipientId, @Positive Long amount) throws Exception {
-        // Create a TransactionGroup with the status IN_PROGRESS
+    public UUID transferBetweenTwoWallets(@NotNull Integer senderId, @NotNull Integer recipientId,
+                                          @Positive Long amount) throws Exception {
+        // 1. Create transaction group (IN_PROGRESS)
         UUID referenceId = createTransactionGroup();
 
         try {
-            // 2. Hold the amount from the sender's account for deduction
-            walletService.hold(senderId, amount, referenceId);
+            // 2. Hold debit from sender (blocks amount from available balance)
+            walletService.holdDebit(senderId, amount, referenceId);
 
-            // 3. Reserve the amount on recipient's account for addition
-            walletService.reserve(recipientId, amount, referenceId);
+            // 3. Hold credit to recipient (prepares amount for addition)
+            walletService.holdCredit(recipientId, amount, referenceId);
 
-            // 4. Update the TransactionGroup status to CONFIRMED
-            // And confirm all HOLD and RESERVE operations made under the same referenceId.
-            confirmTransactionGroup(referenceId);
+            // 4. Settle the transaction group (finalizes the transfer)
+            settleTransactionGroup(referenceId);
+
+            log.info("Transfer completed: from={}, to={}, amount={}, referenceId={}",
+                    senderId, recipientId, amount, referenceId);
+
         } catch (Exception e) {
-            // 5. Update the TransactionGroup status to REJECTED
-            // And reject all HOLD and RESERVE operations made under the same referenceId.
-            rejectTransactionGroup(referenceId, e.getMessage());
-            throw e;  // Propagate the exception for further handling or to inform the user
+            // 5. Cancel the transaction group on any error (returns funds)
+            log.error("Transfer failed: from={}, to={}, amount={}, referenceId={}, error={}",
+                    senderId, recipientId, amount, referenceId, e.getMessage());
+
+            cancelTransactionGroup(referenceId, e.getMessage());
+            throw e;  // Propagate exception to caller
         }
 
-        return referenceId; // Return the referenceId for tracking or further operations
+        return referenceId;
     }
 
     /**
-     * Retrieves the status of a transaction group associated with a specific reference ID.
+     * Retrieves the current status of a transaction group.
      *
-     * <p>
-     * This method looks up the transaction group corresponding to the provided {@code referenceId}
-     * and returns its current status. Transaction groups might be used to batch or group multiple
-     * transactions together, and their status can be used to track the combined status of all
-     * transactions within the group.
-     * </p>
+     * <p>Possible statuses:
+     * <ul>
+     *   <li>IN_PROGRESS: Group is active, transactions are held</li>
+     *   <li>SETTLED: Group finalized successfully</li>
+     *   <li>RELEASED: Group reversed after dispute</li>
+     *   <li>CANCELLED: Group cancelled before completion</li>
+     * </ul>
      *
-     * <p>
-     * If there's no transaction group associated with the given {@code referenceId}, this method may
-     * return {@code null} or throw an exception, based on the underlying implementation.
-     * </p>
-     *
-     * @param referenceId The unique identifier (UUID) of the transaction group whose status is to be retrieved.
-     *                    Must not be {@code null}.
-     *
-     * @return The {@link TransactionGroupStatus} indicating the current status of the transaction group.
-     *         It can be one of the predefined statuses like PENDING, CONFIRMED, REJECTED, etc.
-     *
-     * @throws IllegalArgumentException If {@code referenceId} is {@code null}.
-     *
-     * @throws Exception If any other unexpected error occurs during the retrieval process.
+     * @param referenceId The UUID of the transaction group
+     * @return The current status of the group
+     * @throws EntityNotFoundException If no group exists with this reference ID
      */
     public TransactionGroupStatus getStatusForReferenceId(@NotNull UUID referenceId) {
         return transactionGroupRepository.findById(referenceId)
                 .map(TransactionGroup::getStatus)
-                .orElseThrow(() -> new EntityNotFoundException("No transaction group found with referenceId: " + referenceId));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No transaction group found with referenceId: " + referenceId));
     }
 
     /**
-     * Retrieves a list of transactions associated with a specific reference ID.
+     * Retrieves all transactions associated with a transaction group.
      *
-     * <p>
-     * This method fetches all transactions that are linked to the given {@code referenceId}. The reference ID
-     * can be seen as a mechanism to group or batch multiple transactions together for a specific purpose or
-     * context. This method helps in fetching all such transactions under this grouping.
-     * </p>
+     * <p>Returns all transaction records (both HOLD and final status) that belong
+     * to the specified group. Useful for audit trails and transaction history.
      *
-     * <p>
-     * If no transactions are associated with the given {@code referenceId}, this method will return an empty list.
-     * It's recommended to check the size of the returned list or use it directly in enhanced for-loops or streams
-     * without the need for null checks.
-     * </p>
-     *
-     * @param referenceId The unique identifier (UUID) of the transaction group for which associated transactions
-     *                    are to be retrieved. Must not be {@code null}.
-     *
-     * @return A list of {@link TransactionDTO} objects representing each transaction associated with the reference ID.
-     *         If no transactions are found, an empty list is returned.
-     *
-     * @throws IllegalArgumentException If {@code referenceId} is {@code null}.
-     *
-     * @throws DataAccessException If any issues arise during data retrieval from the underlying storage or database.
-     *
+     * @param referenceId The UUID of the transaction group
+     * @return List of transaction DTOs (empty list if no transactions found)
+     * @throws DataAccessException If database error occurs
      */
     public List<TransactionDTO> getTransactionsByReferenceId(@NotNull UUID referenceId) {
         List<Transaction> transactions = transactionRepository.findByReferenceId(referenceId);

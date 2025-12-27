@@ -77,7 +77,7 @@ public class TransactionSnapshotService {
                           AND tg.status IN (:statuses)
                         """, Transaction.class)
                 .setParameter("walletId", walletId)
-                .setParameter("statuses", Arrays.asList(TransactionGroupStatus.CONFIRMED, TransactionGroupStatus.REJECTED))
+                .setParameter("statuses", Arrays.asList(TransactionGroupStatus.SETTLED, TransactionGroupStatus.RELEASED, TransactionGroupStatus.CANCELLED))
                 .getResultList();
 
         if (transactionsToSnapshot.isEmpty()) {
@@ -158,7 +158,7 @@ public class TransactionSnapshotService {
         ledgerEntry.setWalletId(walletId);
         ledgerEntry.setAmount(cumulativeBalance);
         ledgerEntry.setType(TransactionType.LEDGER);
-        ledgerEntry.setStatus(TransactionStatus.CONFIRMED);
+        ledgerEntry.setStatus(TransactionStatus.SETTLED);
         ledgerEntry.setSnapshotDate(LocalDateTime.now());
         ledgerEntry.setLedgerEntry(true);
 
@@ -166,7 +166,7 @@ public class TransactionSnapshotService {
         log.debug("Ledger entry created with ID={} for walletId={}", ledgerEntrySaved.getId(), walletId);
 
         // Step 3: Retrieve reference IDs for the snapshots being archived.
-        List<UUID> referenceIds = transactionSnapshotRepository.findDistinctReferenceIds(walletId, olderThan, TransactionStatus.CONFIRMED,false);
+        List<UUID> referenceIds = transactionSnapshotRepository.findDistinctReferenceIds(walletId, olderThan, TransactionStatus.SETTLED,false);
         if (referenceIds.isEmpty()) {
             log.error("Unexpected state: No reference IDs found despite a positive cumulative balance.");
             throw new IllegalStateException("Reference IDs not found for snapshots being archived.");
