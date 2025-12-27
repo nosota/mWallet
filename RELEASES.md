@@ -257,6 +257,76 @@ void transferMoney3ReconciliationError() {
 
 ---
 
+#### **11. Three-Tier Archiving Architecture (V2.03)**
+
+Implemented performance-optimized archiving while maintaining full audit trail:
+
+**Architecture:**
+```
+transaction                      (Hot Data - Operational)
+    ↓ captureDailySnapshotForWallet()
+transaction_snapshot             (Warm Data - Recent + LEDGER checkpoints)
+    ↓ archiveOldSnapshots()
+transaction_snapshot_archive     (Cold Data - Immutable final storage)
+```
+
+**Immutability Strategy:**
+
+| Table | UPDATE | DELETE | Purpose |
+|-------|--------|--------|---------|
+| `transaction` | ❌ Blocked | ✅ Allowed | Hot operational data, can be archived |
+| `transaction_snapshot` | ❌ Blocked | ✅ Allowed | Warm data with LEDGER checkpoints, can be archived |
+| `transaction_snapshot_archive` | ❌ Blocked | ❌ Blocked | **Immutable final ledger** for compliance |
+
+**Key Points:**
+
+1. **Records Cannot Be Modified** (UPDATE blocked everywhere)
+   - Data integrity guaranteed
+   - Once written, transaction details are permanent
+
+2. **Archiving Allowed** (DELETE allowed in hot/warm tiers)
+   - `transaction` → `transaction_snapshot` (daily)
+   - `transaction_snapshot` → `transaction_snapshot_archive` (monthly)
+   - Performance optimization without data loss
+
+3. **Final Storage Immutable** (DELETE blocked in archive)
+   - `transaction_snapshot_archive` is the permanent ledger
+   - Complete audit trail for compliance
+   - Never deleted, only accumulated
+
+4. **LEDGER Checkpoints**
+   - Old snapshots consolidated into LEDGER entries
+   - Balance = SUM(LEDGER entries) + recent snapshots + current transactions
+   - Fast balance lookups without scanning millions of rows
+
+**Example Flow:**
+```
+Day 1: User transfers 100₽
+  transaction: (amount=100, status=SETTLED)
+
+Day 2: Daily snapshot
+  transaction_snapshot: (amount=100, is_ledger_entry=FALSE)
+  transaction: (deleted - archived to snapshot)
+
+Day 30: Archive old snapshots
+  Create LEDGER entry: (amount=5000₽, is_ledger_entry=TRUE)
+  transaction_snapshot_archive: (1000 old snapshots moved here)
+  transaction_snapshot: (LEDGER entry remains)
+
+Result:
+  - Balance calculation: Fast (only LEDGER + recent data)
+  - Full audit trail: Complete (all data in archive)
+  - Compliance: Met (archive is immutable)
+```
+
+**Benefits:**
+- ✅ Performance: Hot table stays small
+- ✅ Compliance: Full immutable audit trail in archive
+- ✅ Flexibility: Can archive aggressively without losing data
+- ✅ Efficiency: LEDGER checkpoints optimize balance queries
+
+---
+
 ### **📚 Documentation**
 
 Created comprehensive documentation:
@@ -290,6 +360,7 @@ Created comprehensive documentation:
 **Migration Files:**
 - `V2.01__Update_transaction_statuses.sql` - Status enum migration
 - `V2.02__Ledger_immutability_constraints.sql` - Immutability, constraints, indexes
+- `V2.03__Adjust_immutability_for_archiving.sql` - Three-tier archiving architecture
 
 **Modified Services:**
 - `WalletService` - Updated hold/settle/release/cancel methods
@@ -300,8 +371,8 @@ Created comprehensive documentation:
 
 **New Components:**
 - `LedgerController` - REST API for ledger operations
-- Database triggers for immutability
-- Validation view for monitoring
+- Database triggers for immutability and archiving
+- Validation view for three-tier monitoring
 
 ---
 
@@ -313,7 +384,10 @@ Created comprehensive documentation:
    ```bash
    # V2.01 updates statuses (safe, backward compatible)
    # V2.02 adds triggers and constraints (IMPORTANT: test on staging first!)
+   # V2.03 adjusts immutability for archiving (enables snapshot/archive operations)
    ```
+
+   **Note:** V2.03 removes DELETE triggers from `transaction` and `transaction_snapshot` to enable archiving, while adding immutability to `transaction_snapshot_archive` as the final ledger storage.
 
 2. **Configure monitoring:**
    ```sql
