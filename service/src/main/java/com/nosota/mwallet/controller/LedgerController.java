@@ -1,14 +1,21 @@
 package com.nosota.mwallet.controller;
 
 import com.nosota.mwallet.api.LedgerApi;
+import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
 import com.nosota.mwallet.api.dto.TransactionDTO;
 import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.api.response.*;
+import com.nosota.mwallet.dto.SettlementCalculation;
+import com.nosota.mwallet.model.Settlement;
+import com.nosota.mwallet.service.SettlementService;
 import com.nosota.mwallet.service.TransactionService;
 import com.nosota.mwallet.service.WalletBalanceService;
 import com.nosota.mwallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -26,6 +33,7 @@ public class LedgerController implements LedgerApi {
     private final WalletService walletService;
     private final WalletBalanceService walletBalanceService;
     private final TransactionService transactionService;
+    private final SettlementService settlementService;
 
     @Override
     public ResponseEntity<TransactionResponse> holdDebit(Integer walletId, Long amount, UUID referenceId) throws Exception {
@@ -113,5 +121,90 @@ public class LedgerController implements LedgerApi {
     public ResponseEntity<List<TransactionDTO>> getGroupTransactions(UUID referenceId) {
         List<TransactionDTO> transactions = transactionService.getTransactionsByReferenceId(referenceId);
         return ResponseEntity.ok(transactions);
+    }
+
+    // ==================== Settlement Operations ====================
+
+    @Override
+    public ResponseEntity<SettlementResponse> calculateSettlement(Long merchantId) {
+        SettlementCalculation calculation = settlementService.calculateSettlement(merchantId);
+        SettlementResponse response = new SettlementResponse(
+                null,  // no ID yet (not saved)
+                calculation.merchantId(),
+                calculation.totalAmount(),
+                calculation.feeAmount(),
+                calculation.netAmount(),
+                calculation.commissionRate(),
+                calculation.groupCount(),
+                null,  // no status yet
+                null,  // no createdAt yet
+                null,  // no settledAt yet
+                null   // no settlementTransactionGroupId yet
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    public ResponseEntity<SettlementResponse> executeSettlement(Long merchantId) throws Exception {
+        Settlement settlement = settlementService.executeSettlement(merchantId);
+        SettlementResponse response = toSettlementResponse(settlement);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Override
+    public ResponseEntity<SettlementResponse> getSettlement(UUID settlementId) {
+        Settlement settlement = settlementService.getSettlement(settlementId);
+        SettlementResponse response = toSettlementResponse(settlement);
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    public ResponseEntity<PagedResponse<SettlementHistoryDTO>> getSettlementHistory(
+            Long merchantId, int page, int size) {
+        Page<Settlement> settlements = settlementService.getSettlementHistory(
+                merchantId, PageRequest.of(page, size));
+
+        List<SettlementHistoryDTO> content = settlements.getContent().stream()
+                .map(this::toSettlementHistoryDTO)
+                .toList();
+
+        PagedResponse<SettlementHistoryDTO> response = new PagedResponse<>(
+                content,
+                settlements.getNumber(),
+                settlements.getSize(),
+                (int) settlements.getTotalElements()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== Private Helper Methods ====================
+
+    private SettlementResponse toSettlementResponse(Settlement settlement) {
+        return new SettlementResponse(
+                settlement.getId(),
+                settlement.getMerchantId(),
+                settlement.getTotalAmount(),
+                settlement.getFeeAmount(),
+                settlement.getNetAmount(),
+                settlement.getCommissionRate(),
+                settlement.getGroupCount(),
+                settlement.getStatus(),
+                settlement.getCreatedAt(),
+                settlement.getSettledAt(),
+                settlement.getSettlementTransactionGroupId()
+        );
+    }
+
+    private SettlementHistoryDTO toSettlementHistoryDTO(Settlement settlement) {
+        return new SettlementHistoryDTO(
+                settlement.getId(),
+                settlement.getMerchantId(),
+                settlement.getNetAmount(),
+                settlement.getCommissionRate(),
+                settlement.getGroupCount(),
+                settlement.getStatus(),
+                settlement.getSettledAt()
+        );
     }
 }

@@ -1,5 +1,7 @@
 package com.nosota.mwallet.api;
 
+import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
 import com.nosota.mwallet.api.dto.TransactionDTO;
 import com.nosota.mwallet.api.response.*;
 import lombok.RequiredArgsConstructor;
@@ -212,6 +214,57 @@ public class LedgerClient implements LedgerApi {
                 .uri("/api/v1/ledger/groups/{referenceId}/transactions", referenceId)
                 .retrieve()
                 .toEntity(new ParameterizedTypeReference<List<TransactionDTO>>() {})
+                .block();
+    }
+
+    // ==================== Settlement Operations ====================
+
+    @Override
+    public ResponseEntity<SettlementResponse> calculateSettlement(Long merchantId) {
+        log.debug("Calling calculateSettlement: merchantId={}", merchantId);
+
+        return webClient.get()
+                .uri("/api/v1/ledger/settlement/merchants/{merchantId}/calculate", merchantId)
+                .retrieve()
+                .toEntity(SettlementResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<SettlementResponse> executeSettlement(Long merchantId) {
+        log.debug("Calling executeSettlement: merchantId={}", merchantId);
+
+        return webClient.post()
+                .uri("/api/v1/ledger/settlement/merchants/{merchantId}/execute", merchantId)
+                .retrieve()
+                .toEntity(SettlementResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<SettlementResponse> getSettlement(UUID settlementId) {
+        log.debug("Calling getSettlement: settlementId={}", settlementId);
+
+        return webClient.get()
+                .uri("/api/v1/ledger/settlement/{settlementId}", settlementId)
+                .retrieve()
+                .toEntity(SettlementResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<PagedResponse<SettlementHistoryDTO>> getSettlementHistory(
+            Long merchantId, int page, int size) {
+        log.debug("Calling getSettlementHistory: merchantId={}, page={}, size={}", merchantId, page, size);
+
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/ledger/settlement/merchants/{merchantId}/history")
+                        .queryParam("page", page)
+                        .queryParam("size", size)
+                        .build(merchantId))
+                .retrieve()
+                .toEntity(new ParameterizedTypeReference<PagedResponse<SettlementHistoryDTO>>() {})
                 .block();
     }
 }

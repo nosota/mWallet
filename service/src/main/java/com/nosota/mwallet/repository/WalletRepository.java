@@ -1,12 +1,15 @@
 package com.nosota.mwallet.repository;
 
 import com.nosota.mwallet.model.Wallet;
+import com.nosota.mwallet.model.WalletType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface WalletRepository extends JpaRepository<Wallet, Integer> {
@@ -33,4 +36,23 @@ public interface WalletRepository extends JpaRepository<Wallet, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM Wallet w WHERE w.id = :id")
     Wallet getOneForUpdate(@Param("id") Integer id);
+
+    /**
+     * Finds wallets by type and null ownerId (system wallets).
+     * Used for finding ESCROW and SYSTEM wallets.
+     *
+     * @param type The wallet type (ESCROW, SYSTEM)
+     * @return List of wallets (typically 0 or 1)
+     */
+    List<Wallet> findByTypeAndOwnerIdIsNull(WalletType type);
+
+    /**
+     * Finds wallets by ownerId and type.
+     * Used for finding USER and MERCHANT wallets.
+     *
+     * @param ownerId The owner ID
+     * @param type    The wallet type (USER, MERCHANT)
+     * @return List of wallets
+     */
+    List<Wallet> findByOwnerIdAndType(Long ownerId, WalletType type);
 }

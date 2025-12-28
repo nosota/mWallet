@@ -1,5 +1,7 @@
 package com.nosota.mwallet.api;
 
+import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
 import com.nosota.mwallet.api.dto.TransactionDTO;
 import com.nosota.mwallet.api.response.*;
 import jakarta.validation.constraints.NotEmpty;
@@ -188,4 +190,50 @@ public interface LedgerApi {
     @GetMapping("/groups/{referenceId}/transactions")
     ResponseEntity<List<TransactionDTO>> getGroupTransactions(
             @PathVariable("referenceId") UUID referenceId);
+
+    // ==================== Settlement Operations ====================
+
+    /**
+     * Calculates settlement for a merchant (preview without executing).
+     *
+     * @param merchantId The merchant ID
+     * @return Settlement calculation with amounts and fees
+     */
+    @GetMapping("/settlement/merchants/{merchantId}/calculate")
+    ResponseEntity<SettlementResponse> calculateSettlement(
+            @PathVariable("merchantId") Long merchantId);
+
+    /**
+     * Executes settlement for a merchant (transfers funds from ESCROW to MERCHANT).
+     *
+     * @param merchantId The merchant ID
+     * @return Completed settlement response
+     */
+    @PostMapping("/settlement/merchants/{merchantId}/execute")
+    ResponseEntity<SettlementResponse> executeSettlement(
+            @PathVariable("merchantId") Long merchantId) throws Exception;
+
+    /**
+     * Gets a specific settlement by ID.
+     *
+     * @param settlementId The settlement ID
+     * @return Settlement response
+     */
+    @GetMapping("/settlement/{settlementId}")
+    ResponseEntity<SettlementResponse> getSettlement(
+            @PathVariable("settlementId") UUID settlementId);
+
+    /**
+     * Gets settlement history for a merchant with pagination.
+     *
+     * @param merchantId The merchant ID
+     * @param page       Page number (0-indexed)
+     * @param size       Page size
+     * @return Paginated list of settlements
+     */
+    @GetMapping("/settlement/merchants/{merchantId}/history")
+    ResponseEntity<PagedResponse<SettlementHistoryDTO>> getSettlementHistory(
+            @PathVariable("merchantId") Long merchantId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size);
 }

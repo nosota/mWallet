@@ -30,4 +30,12 @@ public class TransactionGroup {
     private TransactionGroupStatus status;
 
     private String reason;
+
+    /**
+     * ID of the merchant associated with this transaction group.
+     * Used for settlement operations to group transactions by merchant.
+     * Nullable for non-merchant transactions.
+     */
+    @Column(name = "merchant_id")
+    private Long merchantId;
 }

@@ -16,3 +16,12 @@ spring:
   flyway:
     locations: classpath:db/migration
     enabled: true
+
+# Settlement configuration
+settlement:
+  # Platform commission rate (e.g., 0.03 = 3%)
+  commission-rate: 0.03
+  # Minimum amount required for settlement (in cents, 0 = no minimum)
+  min-amount: 0
+  # Minimum age of HOLD transactions to include in settlement (in days, 0 = include all)
+  hold-age-days: 0
