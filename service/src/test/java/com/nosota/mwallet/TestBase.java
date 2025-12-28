@@ -1,6 +1,8 @@
 package com.nosota.mwallet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nosota.mwallet.model.OwnerType;
+import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,6 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 @SpringBootTest(
         classes = MwalletApplication.class,
@@ -77,5 +81,73 @@ public abstract class TestBase {
     @AfterAll
     static void afterAll() {
         postgres.stop();
+    }
+
+    // Counter for generating unique owner IDs in tests
+    private static final AtomicLong ownerIdCounter = new AtomicLong(1);
+
+    /**
+     * Helper method to create a USER wallet with a generated owner ID.
+     * Uses incrementing owner IDs (1, 2, 3, ...) for test purposes.
+     */
+    protected Integer createUserWallet(String description) {
+        return walletManagementService.createNewWallet(
+                WalletType.USER,
+                description,
+                ownerIdCounter.getAndIncrement(),
+                OwnerType.USER_OWNER
+        );
+    }
+
+    /**
+     * Helper method to create a USER wallet with initial balance and generated owner ID.
+     */
+    protected Integer createUserWalletWithBalance(String description, Long initialBalance) {
+        return walletManagementService.createNewWalletWithBalance(
+                WalletType.USER,
+                description,
+                initialBalance,
+                ownerIdCounter.getAndIncrement(),
+                OwnerType.USER_OWNER
+        );
+    }
+
+    /**
+     * Helper method to create a SYSTEM wallet (system-owned, no individual owner).
+     */
+    protected Integer createSystemWallet(String description) {
+        return walletManagementService.createSystemWallet(description);
+    }
+
+    /**
+     * Helper method to create a SYSTEM wallet with initial balance.
+     */
+    protected Integer createSystemWalletWithBalance(String description, Long initialBalance) {
+        return walletManagementService.createSystemWalletWithBalance(description, initialBalance);
+    }
+
+    /**
+     * Helper method to create a MERCHANT wallet with a generated owner ID.
+     */
+    protected Integer createMerchantWallet(String description) {
+        return walletManagementService.createNewWallet(
+                WalletType.MERCHANT,
+                description,
+                ownerIdCounter.getAndIncrement(),
+                OwnerType.MERCHANT_OWNER
+        );
+    }
+
+    /**
+     * Helper method to create a MERCHANT wallet with initial balance and generated owner ID.
+     */
+    protected Integer createMerchantWalletWithBalance(String description, Long initialBalance) {
+        return walletManagementService.createNewWalletWithBalance(
+                WalletType.MERCHANT,
+                description,
+                initialBalance,
+                ownerIdCounter.getAndIncrement(),
+                OwnerType.MERCHANT_OWNER
+        );
     }
 }

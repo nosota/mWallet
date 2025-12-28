@@ -19,8 +19,8 @@ public class TransactionArchiveTest extends TestBase {
 
     public void setup() throws Exception {
         // Create initial wallets
-        wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "TransactionArchiveTest.setup", INITIAL_BALANCE);
-        wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, "TransactionArchiveTest.setup", INITIAL_BALANCE);
+        wallet1Id = createUserWalletWithBalance("TransactionArchiveTest.setup", INITIAL_BALANCE);
+        wallet2Id = createSystemWalletWithBalance("TransactionArchiveTest.setup", INITIAL_BALANCE);
 
         transactionService.transferBetweenTwoWallets(wallet1Id, wallet2Id, 100L);
         transactionService.transferBetweenTwoWallets(wallet2Id, wallet1Id, 100L);

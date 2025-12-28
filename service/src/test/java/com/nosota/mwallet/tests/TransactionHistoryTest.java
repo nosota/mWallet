@@ -23,8 +23,8 @@ public class TransactionHistoryTest extends TestBase {
     @Test
     public void testPaginatedHistory() throws Exception {
         // 1. Create wallets
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "testPaginatedHistory", 100L);
-        Integer wallet2Id = walletManagementService.createNewWalletWithBalance(WalletType.SYSTEM, "testPaginatedHistory", 0L);
+        Integer wallet1Id = createUserWalletWithBalance("testPaginatedHistory", 100L);
+        Integer wallet2Id = createSystemWalletWithBalance("testPaginatedHistory", 0L);
 
         // 2. Perform money transfer
         perform10transactions(wallet1Id, wallet2Id);

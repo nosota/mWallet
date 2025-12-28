@@ -34,8 +34,8 @@ class BasicTests extends TestBase {
 
     @Test
     void createWallets() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "createWallets", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "createWallets");
+        Integer wallet1Id = createUserWalletWithBalance("createWallets", 10L);
+        Integer wallet2Id = createUserWallet("createWallets");
 
         // Get balance via REST API
         Long balance1 = getBalance(wallet1Id);
@@ -47,8 +47,8 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney2Positive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney2Positive", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney2Positive");
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney2Positive", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney2Positive");
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -82,9 +82,9 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney3Negative() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Negative", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3Negative");
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Negative", 1L);
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney3Negative", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney3Negative");
+        Integer wallet3Id = createUserWalletWithBalance("transferMoney3Negative", 1L);
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -132,9 +132,9 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney3Positive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Positive", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3Positive");
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3Positive", 1L);
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney3Positive", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney3Positive");
+        Integer wallet3Id = createUserWalletWithBalance("transferMoney3Positive", 1L);
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -172,9 +172,9 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney3ReconciliationError() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3ReconciliationError", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3ReconciliationError");
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3ReconciliationError", 1L);
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney3ReconciliationError", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney3ReconciliationError");
+        Integer wallet3Id = createUserWalletWithBalance("transferMoney3ReconciliationError", 1L);
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -217,8 +217,8 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoneyAndSnapshot() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoneyAndSnapshot", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoneyAndSnapshot");
+        Integer wallet1Id = createUserWalletWithBalance("transferMoneyAndSnapshot", 10L);
+        Integer wallet2Id = createUserWallet("transferMoneyAndSnapshot");
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -268,9 +268,9 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney3PositiveAndSnapshot() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshot", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3PositiveAndSnapshot");
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshot", 1L);
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney3PositiveAndSnapshot", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney3PositiveAndSnapshot");
+        Integer wallet3Id = createUserWalletWithBalance("transferMoney3PositiveAndSnapshot", 1L);
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
@@ -319,9 +319,9 @@ class BasicTests extends TestBase {
 
     @Test
     void transferMoney3PositiveAndSnapshotAndArchive() throws Exception {
-        Integer wallet1Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive", 10L);
-        Integer wallet2Id = walletManagementService.createNewWallet(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive");
-        Integer wallet3Id = walletManagementService.createNewWalletWithBalance(WalletType.USER, "transferMoney3PositiveAndSnapshotAndArchive", 1L);
+        Integer wallet1Id = createUserWalletWithBalance("transferMoney3PositiveAndSnapshotAndArchive", 10L);
+        Integer wallet2Id = createUserWallet("transferMoney3PositiveAndSnapshotAndArchive");
+        Integer wallet3Id = createUserWalletWithBalance("transferMoney3PositiveAndSnapshotAndArchive", 1L);
 
         Long balance1 = getBalance(wallet1Id);
         Long balance2 = getBalance(wallet2Id);
