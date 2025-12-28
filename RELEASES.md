@@ -1,11 +1,21 @@
+## **Wallet System - Release Notes v1.0.8**
+
+### **Date:** 28.12.2025
+
+### **Overview:**
+
+This release implements **merchant settlement operations** for transferring accumulated funds from ESCROW to MERCHANT wallets with configurable platform commission. Settlement provides calculate/preview, execution, and history APIs with full audit trail and transaction linking.
+
+---
+
 ## **Wallet System - Release Notes v1.0.7**
 
 ### **Date:** 28.12.2025
 
 ### **Overview:**
 
-This release implements **tier2 multi-module architecture** with separate API and service modules following 
-CLAUDE.md specifications. The mWallet service now provides a clean API interface with WebClient-based client 
+This release implements **tier2 multi-module architecture** with separate API and service modules following
+CLAUDE.md specifications. The mWallet service now provides a clean API interface with WebClient-based client
 implementation for inter-service communication.
 
 ---
