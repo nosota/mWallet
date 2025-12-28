@@ -1,7 +1,7 @@
-package com.nosota.mwallet.dto;
+package com.nosota.mwallet.api.dto;
 
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.TransactionType;
+import com.nosota.mwallet.api.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

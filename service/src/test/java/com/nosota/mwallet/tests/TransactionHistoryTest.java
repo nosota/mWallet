@@ -1,10 +1,10 @@
 package com.nosota.mwallet.tests;
 
 import com.nosota.mwallet.TestBase;
-import com.nosota.mwallet.dto.PagedResponse;
-import com.nosota.mwallet.dto.TransactionHistoryDTO;
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.TransactionType;
+import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.api.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionType;
 import com.nosota.mwallet.model.WalletType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

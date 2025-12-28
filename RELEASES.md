@@ -1,3 +1,15 @@
+## **Wallet System - Release Notes v1.0.7**
+
+### **Date:** 28.12.2025
+
+### **Overview:**
+
+This release implements **tier2 multi-module architecture** with separate API and service modules following 
+CLAUDE.md specifications. The mWallet service now provides a clean API interface with WebClient-based client 
+implementation for inter-service communication.
+
+---
+
 ## **Wallet System - Release Notes v1.0.6**
 
 ### **Date:** 28.12.2025

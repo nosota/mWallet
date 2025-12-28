@@ -1,6 +1,6 @@
 package com.nosota.mwallet.service;
 
-import com.nosota.mwallet.dto.TransactionDTO;
+import com.nosota.mwallet.api.dto.TransactionDTO;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionSnapshot;
 import com.nosota.mwallet.repository.TransactionRepository;

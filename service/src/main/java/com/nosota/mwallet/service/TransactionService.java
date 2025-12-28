@@ -1,13 +1,13 @@
 package com.nosota.mwallet.service;
 
-import com.nosota.mwallet.dto.TransactionDTO;
-import com.nosota.mwallet.dto.TransactionMapper;
+import com.nosota.mwallet.api.dto.TransactionDTO;
+import com.nosota.mwallet.mapper.TransactionMapper;
 import com.nosota.mwallet.error.InsufficientFundsException;
 import com.nosota.mwallet.error.TransactionGroupZeroingOutException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
-import com.nosota.mwallet.model.TransactionGroupStatus;
+import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;

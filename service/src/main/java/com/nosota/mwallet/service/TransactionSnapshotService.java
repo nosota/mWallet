@@ -1,5 +1,8 @@
 package com.nosota.mwallet.service;
 
+import com.nosota.mwallet.api.model.TransactionGroupStatus;
+import com.nosota.mwallet.api.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionType;
 import com.nosota.mwallet.model.*;
 import com.nosota.mwallet.repository.LedgerTrackingRepository;
 import com.nosota.mwallet.repository.TransactionGroupRepository;

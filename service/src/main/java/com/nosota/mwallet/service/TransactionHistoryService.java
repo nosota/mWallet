@@ -1,9 +1,9 @@
 package com.nosota.mwallet.service;
 
-import com.nosota.mwallet.dto.PagedResponse;
-import com.nosota.mwallet.dto.TransactionHistoryDTO;
-import com.nosota.mwallet.model.TransactionStatus;
-import com.nosota.mwallet.model.TransactionType;
+import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.api.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

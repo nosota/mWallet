@@ -1,7 +1,7 @@
 package com.nosota.mwallet.tests;
 
 import com.nosota.mwallet.TestBase;
-import com.nosota.mwallet.dto.TransactionHistoryDTO;
+import com.nosota.mwallet.api.dto.TransactionHistoryDTO;
 import com.nosota.mwallet.model.WalletType;
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package com.nosota.mwallet.dto;
+package com.nosota.mwallet.api.dto;
 
 import java.util.List;
 

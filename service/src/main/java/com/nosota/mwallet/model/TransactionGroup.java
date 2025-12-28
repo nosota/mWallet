@@ -1,5 +1,6 @@
 package com.nosota.mwallet.model;
 
+import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

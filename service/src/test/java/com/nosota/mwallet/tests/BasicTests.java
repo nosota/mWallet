@@ -2,8 +2,8 @@ package com.nosota.mwallet.tests;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.nosota.mwallet.TestBase;
-import com.nosota.mwallet.dto.TransactionDTO;
-import com.nosota.mwallet.model.TransactionGroupStatus;
+import com.nosota.mwallet.api.dto.TransactionDTO;
+import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.model.WalletType;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

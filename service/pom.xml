@@ -47,6 +47,13 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- mWallet API Module (interfaces, DTOs, response classes) -->
+        <dependency>
+            <groupId>com.nosota</groupId>
+            <artifactId>mwallet-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- PostgreSQL Driver -->
         <dependency>
             <groupId>org.postgresql</groupId>

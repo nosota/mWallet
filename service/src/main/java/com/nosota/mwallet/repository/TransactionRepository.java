@@ -1,7 +1,7 @@
 package com.nosota.mwallet.repository;
 
 import com.nosota.mwallet.model.Transaction;
-import com.nosota.mwallet.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
