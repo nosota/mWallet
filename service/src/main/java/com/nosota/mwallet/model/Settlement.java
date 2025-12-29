@@ -1,5 +1,6 @@
 package com.nosota.mwallet.model;
 
+import com.nosota.mwallet.api.model.InitiatorType;
 import com.nosota.mwallet.api.model.SettlementStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -114,4 +115,57 @@ public class Settlement {
      */
     @Column(name = "settlement_transaction_group_id")
     private UUID settlementTransactionGroupId;
+
+    /**
+     * Currency of the settlement (ISO 4217 code: USD, EUR, RUB, etc.).
+     * <p>
+     * All transaction groups included in this settlement must use the same currency.
+     * Settlement operations are performed per-currency basis.
+     * </p>
+     */
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency;
+
+    /**
+     * Idempotency key for preventing duplicate settlements.
+     * <p>
+     * Format: "merchant_{merchantId}_settlement_{date}"
+     * Example: "merchant_123_settlement_2024-03-15"
+     * </p>
+     * <p>
+     * If a settlement with the same idempotency key already exists,
+     * return the existing settlement instead of creating a new one.
+     * </p>
+     */
+    @Column(name = "idempotency_key", unique = true, length = 255)
+    private String idempotencyKey;
+
+    /**
+     * ID of the user who triggered this settlement.
+     * <p>
+     * For ADMIN-triggered: the admin user ID
+     * For SYSTEM-triggered (scheduled): null
+     * </p>
+     */
+    @Column(name = "triggered_by_user_id")
+    private Long triggeredByUserId;
+
+    /**
+     * Type of entity that triggered this settlement.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "triggered_by_type", length = 10)
+    private InitiatorType triggeredByType;
+
+    /**
+     * IP address from which the settlement was triggered.
+     */
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    /**
+     * User agent string from the client that triggered the settlement.
+     */
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
 }

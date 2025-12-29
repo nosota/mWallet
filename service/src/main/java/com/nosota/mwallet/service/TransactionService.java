@@ -23,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -62,17 +63,51 @@ public class TransactionService {
      *   <li>Settle the group (both transactions finalized together)</li>
      * </ol>
      *
+     * <p><b>Idempotency:</b> If an idempotencyKey is provided and a transaction group
+     * with the same key already exists, this method returns the existing group's UUID
+     * instead of creating a new one. This prevents duplicate groups from being created
+     * in case of request retries (network timeouts, client retries, etc.).
+     *
+     * @param idempotencyKey Optional idempotency key for duplicate detection.
+     *                       If null, a new group is always created.
+     * @return UUID of the created (or existing) transaction group
+     */
+    @Transactional
+    public UUID createTransactionGroup(String idempotencyKey) {
+        // Check for existing transaction group with this idempotency key
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<TransactionGroup> existing = transactionGroupRepository
+                    .findByIdempotencyKey(idempotencyKey);
+
+            if (existing.isPresent()) {
+                UUID existingId = existing.get().getId();
+                log.info("Returning existing transaction group for idempotency key: referenceId={}, key={}",
+                        existingId, idempotencyKey);
+                return existingId;
+            }
+        }
+
+        // Create new transaction group
+        TransactionGroup transactionGroup = new TransactionGroup();
+        transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
+        transactionGroup.setIdempotencyKey(idempotencyKey);
+        transactionGroup = transactionGroupRepository.save(transactionGroup);
+
+        UUID referenceId = transactionGroup.getId();
+        log.info("Created transaction group: referenceId={}, idempotencyKey={}",
+                referenceId, idempotencyKey);
+        return referenceId;
+    }
+
+    /**
+     * Creates a new transaction group without idempotency key (backward compatibility).
+     * Delegates to {@link #createTransactionGroup(String)} with null idempotency key.
+     *
      * @return UUID of the created transaction group
      */
     @Transactional
     public UUID createTransactionGroup() {
-        TransactionGroup transactionGroup = new TransactionGroup();
-        transactionGroup.setStatus(TransactionGroupStatus.IN_PROGRESS);
-        transactionGroup = transactionGroupRepository.save(transactionGroup);
-
-        UUID referenceId = transactionGroup.getId();
-        log.info("Created transaction group: referenceId={}", referenceId);
-        return referenceId;
+        return createTransactionGroup(null);
     }
 
     /**

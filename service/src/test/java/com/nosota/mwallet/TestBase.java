@@ -12,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -70,17 +72,12 @@ public abstract class TestBase {
     @Autowired
     protected ObjectMapper objectMapper;
 
-    @BeforeAll
-    static void startPostgresContainer() {
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
         postgres.start();
-        System.setProperty("JDBC_URL", postgres.getJdbcUrl());
-        System.setProperty("JDBC_USER", postgres.getUsername());
-        System.setProperty("JDBC_PASSWORD", postgres.getPassword());
-    }
-
-    @AfterAll
-    static void afterAll() {
-        postgres.stop();
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     // Counter for generating unique owner IDs in tests

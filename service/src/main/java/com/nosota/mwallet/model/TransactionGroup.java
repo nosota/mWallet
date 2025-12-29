@@ -46,4 +46,13 @@ public class TransactionGroup {
      */
     @Column(name = "buyer_id")
     private Long buyerId;
+
+    /**
+     * Idempotency key for duplicate detection.
+     * Provided by the client to ensure a transaction group is created only once
+     * even if the request is retried (network timeout, client retry, etc.).
+     * Unique constraint prevents duplicate transaction groups with the same key.
+     */
+    @Column(name = "idempotency_key", unique = true)
+    private String idempotencyKey;
 }

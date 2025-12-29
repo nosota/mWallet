@@ -8,6 +8,7 @@ import com.nosota.mwallet.repository.LedgerTrackingRepository;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.TransactionSnapshotRepository;
+import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -39,6 +40,8 @@ public class TransactionSnapshotService {
     private final TransactionGroupRepository transactionGroupRepository;
 
     private final LedgerTrackingRepository ledgerTrackingRepository;
+
+    private final WalletRepository walletRepository;
 
     /**
      * Captures a daily snapshot for a specified wallet, transferring relevant transactions to the snapshot storage.
@@ -101,7 +104,8 @@ public class TransactionSnapshotService {
                         LocalDateTime.now(), // snapshot creation timestamp
                         transaction.getReferenceId(),
                         transaction.getDescription(),
-                        false // it is regular not ledger record
+                        false, // it is regular not ledger record
+                        transaction.getCurrency()
                 ))
                 .toList();
 
@@ -155,6 +159,10 @@ public class TransactionSnapshotService {
 
         log.debug("Cumulative balance to archive: {} cents for walletId={}", cumulativeBalance, walletId);
 
+        // Get wallet to determine currency
+        Wallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> new IllegalStateException("Wallet not found: " + walletId));
+
         // Step 2: Create a new ledger entry in the transaction_snapshot table.
         TransactionSnapshot ledgerEntry = new TransactionSnapshot();
         // id will be automatically generated
@@ -164,6 +172,7 @@ public class TransactionSnapshotService {
         ledgerEntry.setStatus(TransactionStatus.SETTLED);
         ledgerEntry.setSnapshotDate(LocalDateTime.now());
         ledgerEntry.setLedgerEntry(true);
+        ledgerEntry.setCurrency(wallet.getCurrency());
 
         final TransactionSnapshot ledgerEntrySaved = transactionSnapshotRepository.save(ledgerEntry);
         log.debug("Ledger entry created with ID={} for walletId={}", ledgerEntrySaved.getId(), walletId);

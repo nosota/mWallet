@@ -118,11 +118,18 @@ public class LedgerClient implements LedgerApi {
     }
 
     @Override
-    public ResponseEntity<TransactionGroupResponse> createTransactionGroup() {
-        log.debug("Calling createTransactionGroup");
+    public ResponseEntity<TransactionGroupResponse> createTransactionGroup(String idempotencyKey) {
+        log.debug("Calling createTransactionGroup: idempotencyKey={}", idempotencyKey);
 
-        return webClient.post()
-                .uri("/api/v1/ledger/groups")
+        var requestSpec = webClient.post()
+                .uri("/api/v1/ledger/groups");
+
+        // Add idempotency key header if provided
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            requestSpec = requestSpec.header("Idempotency-Key", idempotencyKey);
+        }
+
+        return requestSpec
                 .retrieve()
                 .toEntity(TransactionGroupResponse.class)
                 .block();

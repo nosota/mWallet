@@ -67,4 +67,17 @@ public class Wallet {
      * Optional description of the wallet.
      */
     private String description;
+
+    /**
+     * Currency of the wallet (ISO 4217 code: USD, EUR, RUB, etc.).
+     * <p>
+     * All transactions on this wallet must use the same currency.
+     * Transfers between wallets with different currencies are forbidden.
+     * </p>
+     * <p>
+     * Default: USD
+     * </p>
+     */
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency = "USD";
 }

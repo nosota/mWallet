@@ -25,6 +25,12 @@ settlement:
   min-amount: 0
   # Minimum age of HOLD transactions to include in settlement (in days, 0 = include all)
   hold-age-days: 0
+  # Refund reserve configuration (жесткий подход - physical HOLD)
+  refund-reserve-enabled: true
+  # Percentage of net amount to reserve for refunds (e.g., 0.10 = 10%)
+  refund-reserve-rate: 0.10
+  # Days to hold the reserve before releasing to merchant
+  refund-reserve-hold-days: 30
 
 # Refund configuration
 refund:
@@ -44,3 +50,12 @@ refund:
   auto-execute-pending: true
   # Days before PENDING_FUNDS refund expires
   pending-funds-expiry-days: 7
+
+# Scheduler configuration
+scheduler:
+  refund-reserve:
+    # Enable/disable refund reserve scheduler
+    enabled: true
+    # Cron expression for releasing expired reserves (default: every hour)
+    # Format: second minute hour day month weekday
+    release-expired-cron: "0 0 * * * *"

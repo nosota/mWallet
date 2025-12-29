@@ -1,6 +1,7 @@
 package com.nosota.mwallet.repository;
 
 import com.nosota.mwallet.api.model.RefundStatus;
+import com.nosota.mwallet.api.model.RefundType;
 import com.nosota.mwallet.model.Refund;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.util.UUID;
  *   <li>Finding refunds by merchant</li>
  *   <li>Finding refunds by status</li>
  *   <li>Calculating total refunded amount for validation</li>
+ *   <li>Idempotency support via idempotency key lookup</li>
  * </ul>
  */
 @Repository
@@ -140,5 +142,23 @@ public interface RefundRepository extends JpaRepository<Refund, UUID> {
             LocalDateTime startDate,
             LocalDateTime endDate,
             Pageable pageable
+    );
+
+    /**
+     * Finds a refund by idempotency key combination.
+     * <p>
+     * Used for preventing duplicate refund execution.
+     * Composite lookup: (transaction_group_id, refund_type, idempotency_key)
+     * </p>
+     *
+     * @param transactionGroupId The transaction group ID
+     * @param refundType         The refund type (FULL or PARTIAL)
+     * @param idempotencyKey     The idempotency key
+     * @return Optional containing the refund if found
+     */
+    Optional<Refund> findByTransactionGroupIdAndRefundTypeAndIdempotencyKey(
+            UUID transactionGroupId,
+            RefundType refundType,
+            String idempotencyKey
     );
 }

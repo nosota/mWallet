@@ -16,6 +16,7 @@ import java.util.UUID;
  * @param amount              Refund amount in cents (must be positive)
  * @param reason              Reason for refund (max 500 characters)
  * @param initiator           Who is initiating this refund (SYSTEM, MERCHANT, ADMIN)
+ * @param idempotencyKey      Optional idempotency key for preventing duplicate refunds
  */
 public record RefundRequest(
         @NotNull(message = "Transaction group ID is required")
@@ -30,6 +31,9 @@ public record RefundRequest(
         String reason,
 
         @NotNull(message = "Initiator is required")
-        RefundInitiator initiator
+        RefundInitiator initiator,
+
+        @Size(max = 255, message = "Idempotency key must not exceed 255 characters")
+        String idempotencyKey
 ) {
 }

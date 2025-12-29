@@ -117,6 +117,7 @@ public class WalletManagementService {
             initialTransaction.setType(TransactionType.CREDIT); // assuming it's a credit transaction for the initial balance
             initialTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
             initialTransaction.setDescription("New wallet with initial balance");
+            initialTransaction.setCurrency(newWallet.getCurrency());
 
             // Generate a reference ID for the initial transaction.
             TransactionGroup transactionGroup = new TransactionGroup();

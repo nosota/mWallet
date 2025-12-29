@@ -42,6 +42,7 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final WalletBalanceService walletBalanceService;
+    private final TransactionStatusStateMachine stateMachine;
 
     /**
      * Holds (blocks) a specified amount from the wallet for debit operation.
@@ -90,11 +91,12 @@ public class WalletService {
         holdTransaction.setStatus(TransactionStatus.HOLD);
         holdTransaction.setReferenceId(referenceId);
         holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
+        holdTransaction.setCurrency(wallet.getCurrency());
 
         Transaction savedTransaction = transactionRepository.save(holdTransaction);
 
-        log.info("Held debit: walletId={}, amount={}, referenceId={}, transactionId={}",
-                walletId, amount, referenceId, savedTransaction.getId());
+        log.info("Held debit: walletId={}, amount={}, currency={}, referenceId={}, transactionId={}",
+                walletId, amount, wallet.getCurrency(), referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
@@ -137,11 +139,12 @@ public class WalletService {
         holdTransaction.setStatus(TransactionStatus.HOLD);
         holdTransaction.setReferenceId(referenceId);
         holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
+        holdTransaction.setCurrency(wallet.getCurrency());
 
         Transaction savedTransaction = transactionRepository.save(holdTransaction);
 
-        log.info("Held credit: walletId={}, amount={}, referenceId={}, transactionId={}",
-                walletId, amount, referenceId, savedTransaction.getId());
+        log.info("Held credit: walletId={}, amount={}, currency={}, referenceId={}, transactionId={}",
+                walletId, amount, wallet.getCurrency(), referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
@@ -183,6 +186,9 @@ public class WalletService {
                             walletId, referenceId));
         }
 
+        // Validate state transition: HOLD → SETTLED
+        stateMachine.validateTransition(TransactionStatus.HOLD, TransactionStatus.SETTLED);
+
         // Create SETTLED transaction for each HOLD transaction
         Integer lastTransactionId = null;
         for (Transaction holdTransaction : holdTransactions) {
@@ -193,12 +199,14 @@ public class WalletService {
             settleTransaction.setStatus(TransactionStatus.SETTLED);
             settleTransaction.setReferenceId(referenceId);
             settleTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+            settleTransaction.setCurrency(holdTransaction.getCurrency());
 
             Transaction savedTransaction = transactionRepository.save(settleTransaction);
             lastTransactionId = savedTransaction.getId();
 
-            log.info("Settled transaction: walletId={}, amount={}, type={}, referenceId={}, transactionId={}",
-                    walletId, holdTransaction.getAmount(), holdTransaction.getType(), referenceId, savedTransaction.getId());
+            log.info("Settled transaction: walletId={}, amount={}, type={}, currency={}, referenceId={}, transactionId={}",
+                    walletId, holdTransaction.getAmount(), holdTransaction.getType(),
+                    holdTransaction.getCurrency(), referenceId, savedTransaction.getId());
         }
 
         return lastTransactionId;
@@ -241,6 +249,9 @@ public class WalletService {
                         String.format("HOLD transaction not found for wallet %d and reference %s",
                                 walletId, referenceId)));
 
+        // Validate state transition: HOLD → RELEASED
+        stateMachine.validateTransition(TransactionStatus.HOLD, TransactionStatus.RELEASED);
+
         // Create RELEASED transaction with OPPOSITE amount and type
         TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
                 ? TransactionType.CREDIT
@@ -253,12 +264,14 @@ public class WalletService {
         releaseTransaction.setStatus(TransactionStatus.RELEASED);
         releaseTransaction.setReferenceId(referenceId);
         releaseTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+        releaseTransaction.setCurrency(holdTransaction.getCurrency());
 
         Transaction savedTransaction = transactionRepository.save(releaseTransaction);
 
-        log.info("Released transaction: walletId={}, originalAmount={}, releaseAmount={}, originalType={}, releaseType={}, referenceId={}, transactionId={}",
+        log.info("Released transaction: walletId={}, originalAmount={}, releaseAmount={}, originalType={}, releaseType={}, currency={}, referenceId={}, transactionId={}",
                 walletId, holdTransaction.getAmount(), releaseTransaction.getAmount(),
-                holdTransaction.getType(), releaseTransaction.getType(), referenceId, savedTransaction.getId());
+                holdTransaction.getType(), releaseTransaction.getType(),
+                holdTransaction.getCurrency(), referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
@@ -303,6 +316,9 @@ public class WalletService {
                         String.format("HOLD transaction not found for wallet %d and reference %s",
                                 walletId, referenceId)));
 
+        // Validate state transition: HOLD → CANCELLED
+        stateMachine.validateTransition(TransactionStatus.HOLD, TransactionStatus.CANCELLED);
+
         // Create CANCELLED transaction with OPPOSITE amount and type
         TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
                 ? TransactionType.CREDIT
@@ -315,12 +331,14 @@ public class WalletService {
         cancelTransaction.setStatus(TransactionStatus.CANCELLED);
         cancelTransaction.setReferenceId(referenceId);
         cancelTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+        cancelTransaction.setCurrency(holdTransaction.getCurrency());
 
         Transaction savedTransaction = transactionRepository.save(cancelTransaction);
 
-        log.info("Cancelled transaction: walletId={}, originalAmount={}, cancelAmount={}, originalType={}, cancelType={}, referenceId={}, transactionId={}",
+        log.info("Cancelled transaction: walletId={}, originalAmount={}, cancelAmount={}, originalType={}, cancelType={}, currency={}, referenceId={}, transactionId={}",
                 walletId, holdTransaction.getAmount(), cancelTransaction.getAmount(),
-                holdTransaction.getType(), cancelTransaction.getType(), referenceId, savedTransaction.getId());
+                holdTransaction.getType(), cancelTransaction.getType(),
+                holdTransaction.getCurrency(), referenceId, savedTransaction.getId());
 
         return savedTransaction.getId();
     }
@@ -366,6 +384,13 @@ public class WalletService {
         Wallet buyerWallet = walletRepository.findById(buyerWalletId)
                 .orElseThrow(() -> new WalletNotFoundException("Buyer wallet with ID " + buyerWalletId + " not found"));
 
+        // Validate both wallets have the same currency (cross-currency refunds forbidden)
+        if (!merchantWallet.getCurrency().equals(buyerWallet.getCurrency())) {
+            throw new IllegalArgumentException(
+                    String.format("Currency mismatch: merchant wallet has %s, buyer wallet has %s. Cross-currency refunds are forbidden.",
+                            merchantWallet.getCurrency(), buyerWallet.getCurrency()));
+        }
+
         // Check merchant has sufficient funds
         Long availableBalance = walletBalanceService.getAvailableBalance(merchantWalletId);
         if (availableBalance < amount) {
@@ -384,6 +409,7 @@ public class WalletService {
         merchantDebit.setStatus(TransactionStatus.REFUNDED);
         merchantDebit.setReferenceId(referenceId);
         merchantDebit.setConfirmRejectTimestamp(now);
+        merchantDebit.setCurrency(merchantWallet.getCurrency());
 
         Transaction savedMerchantDebit = transactionRepository.save(merchantDebit);
 
@@ -395,11 +421,12 @@ public class WalletService {
         buyerCredit.setStatus(TransactionStatus.REFUNDED);
         buyerCredit.setReferenceId(referenceId);
         buyerCredit.setConfirmRejectTimestamp(now);
+        buyerCredit.setCurrency(buyerWallet.getCurrency());
 
         Transaction savedBuyerCredit = transactionRepository.save(buyerCredit);
 
-        log.info("Refund completed: merchantWalletId={}, buyerWalletId={}, amount={}, referenceId={}, merchantTxId={}, buyerTxId={}",
-                merchantWalletId, buyerWalletId, amount, referenceId,
+        log.info("Refund completed: merchantWalletId={}, buyerWalletId={}, amount={}, currency={}, referenceId={}, merchantTxId={}, buyerTxId={}",
+                merchantWalletId, buyerWalletId, amount, merchantWallet.getCurrency(), referenceId,
                 savedMerchantDebit.getId(), savedBuyerCredit.getId());
 
         return referenceId;

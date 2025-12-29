@@ -54,4 +54,7 @@ public class TransactionSnapshot {
 
     @Column(name = "is_ledger_entry")
     private boolean isLedgerEntry;
+
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency;
 }

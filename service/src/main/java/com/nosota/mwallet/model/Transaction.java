@@ -1,5 +1,6 @@
 package com.nosota.mwallet.model;
 
+import com.nosota.mwallet.api.model.InitiatorType;
 import com.nosota.mwallet.api.model.TransactionStatus;
 import com.nosota.mwallet.api.model.TransactionType;
 import jakarta.persistence.*;
@@ -58,5 +59,52 @@ public class Transaction {
     private LocalDateTime confirmRejectTimestamp;
 
     private String description;
+
+    /**
+     * Currency of the transaction (ISO 4217 code: USD, EUR, RUB, etc.).
+     * <p>
+     * Must match the wallet currency. Inherited from wallet at creation time.
+     * Cross-currency transactions are forbidden.
+     * </p>
+     */
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency;
+
+    /**
+     * ID of the user who initiated this transaction.
+     * <p>
+     * For USER-initiated transactions: the user ID
+     * For MERCHANT-initiated: the merchant user ID
+     * For ADMIN-initiated: the admin user ID
+     * For SYSTEM-initiated: null
+     * </p>
+     */
+    @Column(name = "initiated_by_user_id")
+    private Long initiatedByUserId;
+
+    /**
+     * Type of entity that initiated this transaction.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "initiator_type", length = 10)
+    private InitiatorType initiatorType;
+
+    /**
+     * IP address from which the transaction was initiated.
+     * <p>
+     * Used for fraud detection and audit trail.
+     * </p>
+     */
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    /**
+     * User agent string from the client that initiated the transaction.
+     * <p>
+     * Used for audit trail and debugging.
+     * </p>
+     */
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
 
 }

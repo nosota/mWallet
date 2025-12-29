@@ -1,12 +1,82 @@
+## **Wallet System - Release Notes v1.2.0**
+
+### **Date:** 30.12.2025
+
+### **Overview:**
+
+This release implements **comprehensive production-readiness enhancements** including multi-currency support (USD/EUR/RUB),
+idempotency at all levels (transaction groups, settlements, refunds), refund reserve mechanism with physical HOLD
+transactions, transaction state machine validation, and extended audit trail for compliance and fraud detection.
+
+### **Key Enhancements:**
+
+**Multi-Currency Support (V2.09):**
+- Support for USD, EUR, RUB without currency exchange
+- Currency fields added to all entities (Wallet, Transaction, Settlement, Refund)
+- Cross-currency transaction validation prevents currency mixing
+- Each wallet has fixed currency, transactions inherit wallet currency
+
+**Idempotency Protection (V2.07, V2.10, V2.11):**
+- Transaction groups: optional `Idempotency-Key` header prevents duplicate group creation
+- Settlements: automatic key generation `merchant_{id}_settlement_{date}` prevents daily duplicates
+- Refunds: composite uniqueness (transaction_group_id, refund_type, idempotency_key), only one FULL refund per order
+
+**Refund Reserve - Hard Approach (V2.08):**
+- Physical HOLD transactions (10% of settlement for 30 days, configurable)
+- RefundReserveService manages reserve lifecycle: create, release, use for refunds
+- Automated scheduler releases expired reserves (hourly cron job)
+- Reserve transactions: ESCROW → RESERVE_WALLET → MERCHANT after expiry
+
+**Transaction State Machine:**
+- TransactionStatusStateMachine validates allowed transitions
+- Enforces HOLD → SETTLED/RELEASED/CANCELLED flow
+- Prevents invalid state changes at runtime
+
+**Audit Trail Enhancements (V2.12):**
+- InitiatorType enum (USER, MERCHANT, ADMIN, SYSTEM) for all operations
+- Fields added: initiated_by_user_id, initiator_type, ip_address, user_agent
+- Enhanced compliance: Transaction, Settlement, Refund entities track who/where/when
+- Fraud detection: IP patterns, user agent anomalies, account takeover detection
+
+**Refund Type Classification (V2.11):**
+- RefundType enum: FULL (entire order) vs PARTIAL (portion)
+- Database constraints enforce one FULL refund per order
+- Multiple PARTIAL refunds allowed (sum ≤ net amount)
+
+### **Database Migrations:**
+- V2.07: Idempotency for transaction groups
+- V2.08: Refund reserve tables and constraints
+- V2.09: Multi-currency columns (wallet, transaction, settlement, refund, transaction_snapshot)
+- V2.10: Settlement idempotency key
+- V2.11: Refund type and idempotency constraints
+- V2.12: Audit trail fields (initiator, IP, user agent)
+
+### **Configuration:**
+New settings in `application.yaml`:
+- `settlement.refund-reserve-enabled`, `refund-reserve-rate`, `refund-reserve-hold-days`
+- `scheduler.refund-reserve.enabled`, `release-expired-cron`
+
+### **Breaking Changes:**
+- RefundRequest now requires 5th parameter `idempotencyKey` (nullable)
+- All entities require currency field population
+
+### **Deployment Notes:**
+1. Apply migrations V2.07 → V2.12 in sequence
+2. Backfill existing data with default currency (USD)
+3. Update any RefundRequest constructor calls to include idempotency key parameter (can be null)
+4. Configure scheduler cron expression if custom timing required
+
+---
+
 ## **Wallet System - Release Notes v1.1.0**
 
 ### **Date:** 29.12.2025
 
 ### **Overview:**
 
-This release implements **API architectural refactoring** with clear separation of concerns. The monolithic LedgerApi 
-has been split into two focused interfaces: **LedgerApi** for low-level ledger operations and **PaymentApi** for 
-high-level payment operations (settlement and refund). This improves code maintainability, testability, 
+This release implements **API architectural refactoring** with clear separation of concerns. The monolithic LedgerApi
+has been split into two focused interfaces: **LedgerApi** for low-level ledger operations and **PaymentApi** for
+high-level payment operations (settlement and refund). This improves code maintainability, testability,
 and follows the Single Responsibility Principle.
 
 ## **Wallet System - Release Notes v1.0.9**

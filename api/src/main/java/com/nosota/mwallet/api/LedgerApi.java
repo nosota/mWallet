@@ -104,10 +104,14 @@ public interface LedgerApi {
     /**
      * Creates a new transaction group.
      *
+     * @param idempotencyKey Optional idempotency key for duplicate prevention.
+     *                       If provided, duplicate requests with the same key will return
+     *                       the existing transaction group instead of creating a new one.
      * @return Created transaction group response
      */
     @PostMapping("/groups")
-    ResponseEntity<TransactionGroupResponse> createTransactionGroup();
+    ResponseEntity<TransactionGroupResponse> createTransactionGroup(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey);
 
     /**
      * Settles (finalizes) a transaction group successfully.

@@ -22,8 +22,10 @@ import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -62,6 +64,7 @@ public class SettlementService {
     private final WalletRepository walletRepository;
     private final TransactionService transactionService;
     private final WalletService walletService;
+    private final RefundReserveService refundReserveService;
 
     @Value("${settlement.commission-rate}")
     private BigDecimal commissionRate;
@@ -157,10 +160,23 @@ public class SettlementService {
     public Settlement executeSettlement(@NotNull Long merchantId) throws Exception {
         log.info("Executing settlement for merchant {}", merchantId);
 
-        // 1. Calculate settlement
+        // 1. Generate idempotency key (format: merchant_{id}_settlement_{date})
+        String idempotencyKey = generateIdempotencyKey(merchantId);
+        log.debug("Generated idempotency key: {}", idempotencyKey);
+
+        // 2. Check if settlement with this idempotency key already exists
+        Optional<Settlement> existingSettlement = settlementRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingSettlement.isPresent()) {
+            Settlement existing = existingSettlement.get();
+            log.info("Settlement with idempotency key {} already exists: id={}, status={}",
+                    idempotencyKey, existing.getId(), existing.getStatus());
+            return existing;
+        }
+
+        // 3. Calculate settlement
         SettlementCalculation calculation = calculateSettlement(merchantId);
 
-        // 2. Find wallets
+        // 4. Find wallets
         Wallet escrowWallet = findEscrowWallet();
         Wallet merchantWallet = findMerchantWallet(merchantId);
         Wallet systemWallet = findSystemWallet();
@@ -168,20 +184,20 @@ public class SettlementService {
         log.info("Found wallets: escrow={}, merchant={}, system={}",
                 escrowWallet.getId(), merchantWallet.getId(), systemWallet.getId());
 
-        // 3. Create settlement entity (PENDING status)
-        Settlement settlement = createSettlementEntity(calculation);
+        // 5. Create settlement entity (PENDING status)
+        Settlement settlement = createSettlementEntity(calculation, merchantWallet.getCurrency(), idempotencyKey);
         settlement = settlementRepository.save(settlement);
 
-        log.info("Created settlement entity: id={}", settlement.getId());
+        log.info("Created settlement entity: id={}, idempotencyKey={}", settlement.getId(), idempotencyKey);
 
         try {
-            // 4. Create transaction group for settlement
+            // 6. Create transaction group for settlement
             UUID settlementGroupId = transactionService.createTransactionGroup();
             settlement.setSettlementTransactionGroupId(settlementGroupId);
 
             log.info("Created settlement transaction group: id={}", settlementGroupId);
 
-            // 5. Create ledger entries
+            // 7. Create ledger entries
             // ESCROW → MERCHANT (net amount)
             walletService.holdDebit(escrowWallet.getId(), calculation.netAmount(), settlementGroupId);
             walletService.holdCredit(merchantWallet.getId(), calculation.netAmount(), settlementGroupId);
@@ -194,18 +210,29 @@ public class SettlementService {
 
             log.info("Created ledger entries for settlement {}", settlement.getId());
 
-            // 6. Settle transaction group
+            // 8. Settle transaction group
             transactionService.settleTransactionGroup(settlementGroupId);
 
             log.info("Settled transaction group {} for settlement {}", settlementGroupId, settlement.getId());
 
-            // 7. Update settlement status to COMPLETED
+            // 9. Update settlement status to COMPLETED
             settlement.setStatus(SettlementStatus.COMPLETED);
             settlement.setSettledAt(LocalDateTime.now());
             settlement = settlementRepository.save(settlement);
 
-            // 8. Link transaction groups to settlement
+            // 10. Link transaction groups to settlement
             linkTransactionGroupsToSettlement(settlement.getId(), calculation);
+
+            // 11. Create refund reserve (if enabled)
+            try {
+                refundReserveService.createReserve(settlement, escrowWallet.getId());
+                log.info("Refund reserve created for settlement {}", settlement.getId());
+            } catch (Exception e) {
+                log.error("Failed to create refund reserve for settlement {}: {}",
+                        settlement.getId(), e.getMessage(), e);
+                // Don't fail the settlement if reserve creation fails
+                // This is a non-critical operation
+            }
 
             log.info("Settlement {} completed successfully for merchant {}: net={}",
                     settlement.getId(), merchantId, calculation.netAmount());
@@ -298,9 +325,18 @@ public class SettlementService {
     }
 
     /**
+     * Generates idempotency key for settlement.
+     * Format: "merchant_{merchantId}_settlement_{date}"
+     */
+    private String generateIdempotencyKey(Long merchantId) {
+        LocalDate today = LocalDate.now();
+        return String.format("merchant_%d_settlement_%s", merchantId, today);
+    }
+
+    /**
      * Creates settlement entity from calculation.
      */
-    private Settlement createSettlementEntity(SettlementCalculation calculation) {
+    private Settlement createSettlementEntity(SettlementCalculation calculation, String currency, String idempotencyKey) {
         Settlement settlement = new Settlement();
         settlement.setMerchantId(calculation.merchantId());
         settlement.setTotalAmount(calculation.totalAmount());
@@ -310,6 +346,8 @@ public class SettlementService {
         settlement.setGroupCount(calculation.groupCount());
         settlement.setStatus(SettlementStatus.PENDING);
         settlement.setCreatedAt(LocalDateTime.now());
+        settlement.setCurrency(currency);
+        settlement.setIdempotencyKey(idempotencyKey);
         return settlement;
     }
 

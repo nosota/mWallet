@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -19,6 +20,7 @@ import java.util.UUID;
  *   <li>Finding settlements by merchant</li>
  *   <li>Finding settlements by status</li>
  *   <li>Paginated history queries</li>
+ *   <li>Idempotency support via idempotency key lookup</li>
  * </ul>
  */
 @Repository
@@ -66,4 +68,17 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
      * @return Count of settlements
      */
     long countByMerchantIdAndStatus(Long merchantId, SettlementStatus status);
+
+    /**
+     * Finds a settlement by its idempotency key.
+     * <p>
+     * Used for preventing duplicate settlement execution.
+     * If a settlement with this key already exists, it should be returned
+     * instead of creating a new one.
+     * </p>
+     *
+     * @param idempotencyKey The idempotency key to search for
+     * @return Optional containing the settlement if found
+     */
+    Optional<Settlement> findByIdempotencyKey(String idempotencyKey);
 }

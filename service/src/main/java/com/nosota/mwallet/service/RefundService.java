@@ -2,6 +2,7 @@ package com.nosota.mwallet.service;
 
 import com.nosota.mwallet.api.model.RefundInitiator;
 import com.nosota.mwallet.api.model.RefundStatus;
+import com.nosota.mwallet.api.model.RefundType;
 import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.api.request.RefundRequest;
 import com.nosota.mwallet.error.InsufficientFundsException;
@@ -22,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -115,10 +117,41 @@ public class RefundService {
      */
     @Transactional
     public Refund createRefund(@Valid @NotNull RefundRequest request) {
-        log.info("Creating refund for order {}, amount={}, initiator={}",
-                request.transactionGroupId(), request.amount(), request.initiator());
+        log.info("Creating refund for order {}, amount={}, initiator={}, idempotencyKey={}",
+                request.transactionGroupId(), request.amount(), request.initiator(), request.idempotencyKey());
 
-        // 1. Validate order exists and is SETTLED
+        // 0. Determine refund type (FULL or PARTIAL) - needed for idempotency check
+        // Note: we need to get orderAmount first to determine type
+        SettlementTransactionGroup settlementLink = settlementTransactionGroupRepository
+                .findByTransactionGroupId(request.transactionGroupId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Settlement not found for order: " + request.transactionGroupId()));
+
+        Long orderAmount = settlementLink.getAmount();
+        Long totalRefunded = refundRepository.calculateTotalRefundedForOrder(request.transactionGroupId());
+        RefundType refundType = determineRefundType(request.amount(), orderAmount, totalRefunded);
+
+        log.debug("Determined refund type: {} (amount={}, orderAmount={}, totalRefunded={})",
+                refundType, request.amount(), orderAmount, totalRefunded);
+
+        // 1. Check idempotency: if refund with this key already exists, return it
+        if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
+            Optional<Refund> existingRefund = refundRepository
+                    .findByTransactionGroupIdAndRefundTypeAndIdempotencyKey(
+                            request.transactionGroupId(),
+                            refundType,
+                            request.idempotencyKey()
+                    );
+
+            if (existingRefund.isPresent()) {
+                Refund existing = existingRefund.get();
+                log.info("Refund with idempotency key {} already exists: id={}, status={}",
+                        request.idempotencyKey(), existing.getId(), existing.getStatus());
+                return existing;
+            }
+        }
+
+        // 2. Validate order exists and is SETTLED
         TransactionGroup order = transactionGroupRepository.findById(request.transactionGroupId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Order not found: " + request.transactionGroupId()));
@@ -129,39 +162,34 @@ public class RefundService {
                             request.transactionGroupId(), order.getStatus()));
         }
 
-        // 2. Find settlement for this order
-        SettlementTransactionGroup settlementLink = settlementTransactionGroupRepository
-                .findByTransactionGroupId(request.transactionGroupId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Settlement not found for order: " + request.transactionGroupId()));
-
+        // 3. Get settlement entity
         Settlement settlement = settlementRepository.findById(settlementLink.getSettlementId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Settlement entity not found: " + settlementLink.getSettlementId()));
 
-        // 3. Validate time window
+        // 4. Validate time window
         validateTimeWindow(settlement);
 
-        // 4. Validate amount limits
-        Long orderAmount = settlementLink.getAmount();
-        validateRefundAmount(request.transactionGroupId(), request.amount(), orderAmount);
+        // 5. Validate amount limits (already calculated totalRefunded above)
+        validateRefundAmount(request.transactionGroupId(), request.amount(), orderAmount, totalRefunded);
 
-        // 5. Check for pending refunds
+        // 6. Check for pending refunds
         if (!multipleRefundsEnabled || refundRepository.hasPendingRefunds(request.transactionGroupId())) {
             throw new IllegalStateException(
                     "Cannot create refund: pending refunds exist for order " + request.transactionGroupId());
         }
 
-        // 6. Find wallets
+        // 7. Find wallets
         Wallet merchantWallet = findMerchantWallet(order.getMerchantId());
         Wallet buyerWallet = findBuyerWallet(order.getBuyerId());
 
-        // 7. Check merchant balance
+        // 8. Check merchant balance
         Long availableBalance = walletBalanceService.getAvailableBalance(merchantWallet.getId());
         boolean hasSufficientBalance = availableBalance >= request.amount();
 
-        // 8. Create refund entity
-        Refund refund = createRefundEntity(request, settlement, order, merchantWallet, buyerWallet, orderAmount);
+        // 9. Create refund entity (with refundType and idempotencyKey)
+        Refund refund = createRefundEntity(request, settlement, order, merchantWallet, buyerWallet,
+                orderAmount, refundType, request.idempotencyKey());
 
         if (hasSufficientBalance) {
             // Execute immediately
@@ -351,14 +379,12 @@ public class RefundService {
     /**
      * Validates refund amount against order amount and existing refunds.
      */
-    private void validateRefundAmount(UUID transactionGroupId, Long refundAmount, Long orderAmount) {
+    private void validateRefundAmount(UUID transactionGroupId, Long refundAmount,
+                                      Long orderAmount, Long totalRefunded) {
         // Check amount is positive
         if (refundAmount <= 0) {
             throw new IllegalArgumentException("Refund amount must be positive");
         }
-
-        // Calculate total already refunded
-        Long totalRefunded = refundRepository.calculateTotalRefundedForOrder(transactionGroupId);
 
         // Check if this refund would exceed order amount
         Long newTotal = totalRefunded + refundAmount;
@@ -376,11 +402,20 @@ public class RefundService {
     }
 
     /**
+     * Determines refund type based on amount comparison.
+     */
+    private RefundType determineRefundType(Long refundAmount, Long orderAmount, Long totalRefunded) {
+        Long remainingAmount = orderAmount - totalRefunded;
+        return refundAmount.equals(remainingAmount) ? RefundType.FULL : RefundType.PARTIAL;
+    }
+
+    /**
      * Creates refund entity from request.
      */
     private Refund createRefundEntity(RefundRequest request, Settlement settlement,
                                       TransactionGroup order, Wallet merchantWallet,
-                                      Wallet buyerWallet, Long originalAmount) {
+                                      Wallet buyerWallet, Long originalAmount,
+                                      RefundType refundType, String idempotencyKey) {
         Refund refund = new Refund();
         refund.setTransactionGroupId(request.transactionGroupId());
         refund.setSettlementId(settlement.getId());
@@ -393,6 +428,9 @@ public class RefundService {
         refund.setReason(request.reason());
         refund.setInitiator(request.initiator());
         refund.setCreatedAt(LocalDateTime.now());
+        refund.setCurrency(merchantWallet.getCurrency());
+        refund.setRefundType(refundType);
+        refund.setIdempotencyKey(idempotencyKey);
         return refund;
     }
 

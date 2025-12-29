@@ -76,8 +76,8 @@ public class LedgerController implements LedgerApi {
     }
 
     @Override
-    public ResponseEntity<TransactionGroupResponse> createTransactionGroup() {
-        UUID referenceId = transactionService.createTransactionGroup();
+    public ResponseEntity<TransactionGroupResponse> createTransactionGroup(String idempotencyKey) {
+        UUID referenceId = transactionService.createTransactionGroup(idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 new TransactionGroupResponse(referenceId, "IN_PROGRESS", null));
     }

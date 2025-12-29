@@ -1,7 +1,9 @@
 package com.nosota.mwallet.model;
 
+import com.nosota.mwallet.api.model.InitiatorType;
 import com.nosota.mwallet.api.model.RefundInitiator;
 import com.nosota.mwallet.api.model.RefundStatus;
+import com.nosota.mwallet.api.model.RefundType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -173,4 +175,74 @@ public class Refund {
      */
     @Column(name = "notes", length = 1000)
     private String notes;
+
+    /**
+     * Currency of the refund (ISO 4217 code: USD, EUR, RUB, etc.).
+     * <p>
+     * Must match the original transaction currency.
+     * Cross-currency refunds are forbidden.
+     * </p>
+     */
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency;
+
+    /**
+     * Type of refund: FULL or PARTIAL.
+     * <p>
+     * FULL: Entire order amount is refunded (only one FULL refund allowed per order)
+     * PARTIAL: Portion of order amount is refunded (multiple PARTIAL refunds allowed)
+     * </p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_type", nullable = false, length = 10)
+    private RefundType refundType;
+
+    /**
+     * Idempotency key for preventing duplicate refunds.
+     * <p>
+     * Optional. If provided, prevents duplicate refund execution for same order + type combination.
+     * </p>
+     * <p>
+     * Composite unique constraint: (transaction_group_id, refund_type, idempotency_key)
+     * This ensures:
+     * - Only one FULL refund per order
+     * - Partial refunds with same idempotency key are deduplicated
+     * </p>
+     */
+    @Column(name = "idempotency_key", length = 255)
+    private String idempotencyKey;
+
+    /**
+     * ID of the user who initiated this refund.
+     * <p>
+     * For MERCHANT-initiated: the merchant user ID
+     * For ADMIN-initiated: the admin user ID
+     * For SYSTEM-initiated: null
+     * </p>
+     */
+    @Column(name = "initiated_by_user_id")
+    private Long initiatedByUserId;
+
+    /**
+     * Type of entity that initiated this refund.
+     * <p>
+     * Note: This is separate from the 'initiator' field (RefundInitiator enum)
+     * which provides business-level context, while this provides technical audit info.
+     * </p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "initiator_type", length = 10)
+    private InitiatorType initiatorType;
+
+    /**
+     * IP address from which the refund was initiated.
+     */
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    /**
+     * User agent string from the client that initiated the refund.
+     */
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
 }

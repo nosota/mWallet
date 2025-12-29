@@ -133,7 +133,8 @@ public class PaymentControllerTest extends TestBase {
                 randomTransactionGroupId,
                 10000L, // 100.00
                 "Customer request",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         String requestJson = objectMapper.writeValueAsString(request);
@@ -256,7 +257,8 @@ public class PaymentControllerTest extends TestBase {
                 orderGroupId,
                 refundAmount,
                 "Customer requested refund",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         MvcResult refundResult = mockMvc.perform(
@@ -353,7 +355,8 @@ public class PaymentControllerTest extends TestBase {
                 orderGroupId,
                 refundAmount,
                 "Valid refund request",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         MvcResult result = mockMvc.perform(
@@ -413,7 +416,8 @@ public class PaymentControllerTest extends TestBase {
                 orderGroupId,
                 refund1Amount,
                 "First partial refund",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         MvcResult result1 = mockMvc.perform(
@@ -434,7 +438,8 @@ public class PaymentControllerTest extends TestBase {
                 orderGroupId,
                 refund2Amount,
                 "Second partial refund",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         MvcResult result2 = mockMvc.perform(
@@ -505,7 +510,8 @@ public class PaymentControllerTest extends TestBase {
                 orderGroupId,
                 excessiveRefundAmount,
                 "Excessive refund attempt",
-                RefundInitiator.MERCHANT
+                RefundInitiator.MERCHANT,
+                null  // idempotencyKey
         );
 
         mockMvc.perform(
