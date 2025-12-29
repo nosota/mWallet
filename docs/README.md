@@ -1,97 +1,264 @@
 # mWallet Documentation
 
-Welcome to the mWallet comprehensive documentation. This directory contains detailed technical documentation about the architecture, development, and operations of the mWallet service.
+Welcome to the mWallet documentation. This guide provides comprehensive information about the architecture, APIs, testing, and exception handling of the mWallet digital wallet system.
 
-## Document Structure
+## Table of Contents
 
-### Architecture Documentation
+1. [Architecture Overview](./architecture.md)
+2. [API Design](./api-design.md)
+3. [Testing Guide](./testing.md)
+4. [Exception Handling](./exception-handling.md)
 
-- [**Architecture Overview**](./architecture/overview.md) - High-level system architecture and design principles
-- [**Data Model**](./architecture/data-model.md) - Complete database schema and entity relationships
-- [**Transaction Lifecycle**](./architecture/transaction-lifecycle.md) - Transaction flow and state management
-- [**Storage Tiers**](./architecture/storage-tiers.md) - Three-tier storage architecture and archiving strategy
+## Quick Start
 
-### Development Documentation
+### For API Consumers
 
-- [**Development Setup**](./development/setup.md) - Local development environment setup
-- [**Testing Guide**](./development/testing.md) - Testing strategy and test execution
+If you're a service that wants to consume mWallet APIs:
 
-### API Documentation
+1. **Add dependency** to your `pom.xml`:
+   ```xml
+   <dependency>
+       <groupId>com.nosota</groupId>
+       <artifactId>mwallet-api</artifactId>
+       <version>1.1.0</version>
+   </dependency>
+   ```
 
-- [**Service API Reference**](./api/services.md) - Complete service layer API documentation
+2. **Configure clients** in your Spring configuration:
+   ```java
+   @Configuration
+   public class MWalletClientConfig {
 
-### Operations Documentation
+       @Bean
+       public WebClient mwalletWebClient(WebClient.Builder builder,
+                                         @Value("${services.mwallet.url}") String baseUrl) {
+           return builder.baseUrl(baseUrl).build();
+       }
 
-- [**Snapshot & Archiving**](./operations/snapshot-archiving.md) - Daily snapshot and archiving operations
-- [**Monitoring & Reconciliation**](./operations/monitoring.md) - System monitoring and balance reconciliation
+       @Bean
+       public LedgerClient ledgerClient(WebClient mwalletWebClient) {
+           return new LedgerClient(mwalletWebClient);
+       }
 
-## Quick Links
+       @Bean
+       public PaymentClient paymentClient(WebClient mwalletWebClient) {
+           return new PaymentClient(mwalletWebClient);
+       }
+   }
+   ```
 
-### For New Developers
-1. Start with [Architecture Overview](./architecture/overview.md)
-2. Read [Data Model](./architecture/data-model.md)
-3. Set up your environment: [Development Setup](./development/setup.md)
-4. Review [Service API Reference](./api/services.md)
+3. **Use in your services**:
+   ```java
+   @Service
+   @RequiredArgsConstructor
+   public class OrderService {
 
-### For Operations Teams
-1. Understand [Storage Tiers](./architecture/storage-tiers.md)
-2. Configure [Snapshot & Archiving](./operations/snapshot-archiving.md)
-3. Set up [Monitoring & Reconciliation](./operations/monitoring.md)
+       private final LedgerClient ledgerClient;
+       private final PaymentClient paymentClient;
 
-### For Architects
-1. Review [Architecture Overview](./architecture/overview.md)
-2. Study [Transaction Lifecycle](./architecture/transaction-lifecycle.md)
-3. Understand [Storage Tiers](./architecture/storage-tiers.md)
+       public void processOrder(Order order) {
+           // Use ledgerClient for low-level operations
+           UUID groupId = ledgerClient.createTransactionGroup().getBody().referenceId();
+           ledgerClient.holdDebit(order.getBuyerWalletId(), order.getAmount(), groupId);
+           ledgerClient.holdCredit(escrowWalletId, order.getAmount(), groupId);
+           ledgerClient.settleTransactionGroup(groupId);
+       }
 
-## Project Overview
+       public void payoutToMerchant(Long merchantId) {
+           // Use paymentClient for high-level operations
+           paymentClient.executeSettlement(merchantId);
+       }
+   }
+   ```
 
-mWallet is a sophisticated digital wallet management system built with Spring Boot that implements:
+### For Contributors
 
-- **Event-sourced transaction model** with complete audit trail
-- **Two-phase transaction lifecycle** (HOLD/RESERVE → CONFIRM/REJECT)
-- **Double-entry bookkeeping** with zero-sum reconciliation
-- **Three-tier storage architecture** for performance optimization
-- **Ledger checkpoint system** for long-term data management
-- **Multi-wallet atomic transfers** with transaction groups
+If you're developing or maintaining mWallet:
 
-### Technology Stack
+1. **Understand the architecture**: Read [Architecture Overview](./architecture.md)
+2. **Learn the API design**: Read [API Design](./api-design.md)
+3. **Write tests**: Follow [Testing Guide](./testing.md)
+4. **Handle errors properly**: Follow [Exception Handling](./exception-handling.md)
+
+## What is mWallet?
+
+mWallet is a **tier2 internal business service** that provides:
+
+- Digital wallet management (USER, MERCHANT, ESCROW, SYSTEM wallets)
+- Transaction processing with two-phase commit (HOLD → SETTLE/RELEASE)
+- Double-entry accounting for banking compliance
+- Merchant settlement (payouts with platform commission)
+- Customer refunds (returns after settlement)
+- Transaction history and auditing
+
+## Key Features
+
+### 1. Banking-Compliant Ledger
+
+- Double-entry accounting (every debit has a corresponding credit)
+- Immutable transaction history
+- Snapshot and archive system for performance and compliance
+- Point-in-time balance verification
+
+### 2. Two-Phase Transaction Commit
+
+```
+HOLD Phase (reserve funds) → SETTLE (commit) or RELEASE/CANCEL (rollback)
+```
+
+Ensures atomic operations across multiple wallets.
+
+### 3. Transaction Groups
+
+Group related transactions for atomic operations:
+```java
+UUID groupId = createTransactionGroup();
+holdDebit(buyerWallet, 100, groupId);
+holdCredit(merchantWallet, 97, groupId);
+holdCredit(systemWallet, 3, groupId);  // Platform fee
+settleTransactionGroup(groupId);       // All or nothing
+```
+
+### 4. Settlement & Refund
+
+**Settlement**: Pay out merchants for completed orders
+- Transfers from ESCROW to MERCHANT (minus platform commission)
+- Prevents double-settlement
+- Configurable commission rate
+
+**Refund**: Return money to buyers after settlement
+- Handles merchant insufficient balance (PENDING_FUNDS status)
+- Supports partial and multiple refunds
+- Auto-executes when funds available
+
+## API Overview
+
+### LedgerApi - Low-Level Operations
+
+**Base URL**: `/api/v1/ledger`
+
+**Purpose**: Direct ledger manipulation (wallets, transactions, groups)
+
+**Key Endpoints**:
+- Wallet operations: `hold-debit`, `hold-credit`, `settle`, `release`, `cancel`
+- Transaction groups: `create`, `settle`, `release`, `cancel`
+- Transfers: Direct wallet-to-wallet transfers
+- Queries: Balance, status, transaction list
+
+### PaymentApi - High-Level Operations
+
+**Base URL**: `/api/v1/payment`
+
+**Purpose**: Business-level payment workflows (settlement, refund)
+
+**Key Endpoints**:
+- Settlement: `calculate`, `execute`, `get`, `history`
+- Refund: `create`, `get`, `history`, `getByOrder`
+
+## Technology Stack
 
 - **Java**: 23
 - **Spring Boot**: 3.4.5
 - **Database**: PostgreSQL
 - **Migrations**: Flyway
-- **Testing**: JUnit 5, Mockito, Testcontainers
-- **Mapping**: MapStruct
-- **Utilities**: Lombok
+- **Testing**: JUnit 5 + Mockito + Testcontainers
+- **API Communication**: WebClient (REST)
+- **Build**: Maven (multi-module)
 
-### Core Capabilities
+## Multi-Module Structure
 
-1. **Wallet Management**: Create and manage digital wallets with initial balances
-2. **Transaction Processing**: HOLD, RESERVE, CONFIRM, and REJECT operations
-3. **Balance Queries**: Available, HOLD, and RESERVED balance calculations
-4. **Transaction History**: Paginated history with filtering across all storage tiers
-5. **Transaction Statistics**: Credit/debit operations by date and date range
-6. **System Reconciliation**: System-wide balance verification
-7. **Archiving**: Automated snapshot and archiving for performance optimization
+```
+mWallet/
+├── api/        # Shared API contracts (interfaces, DTOs, clients)
+└── service/    # Implementation (controllers, services, repositories)
+```
+
+**Benefits**:
+- Clear separation between API contract and implementation
+- Type-safe client-server communication
+- Compile-time API compatibility checking
+- Easy versioning and backwards compatibility
+
+## Configuration
+
+### Settlement Configuration
+
+```yaml
+settlement:
+  commission-rate: 0.03        # 3% platform fee
+  min-amount: 1000             # Minimum 10.00 to settle
+  hold-age-days: 0             # Immediate settlement
+```
+
+### Refund Configuration
+
+```yaml
+refund:
+  return-commission-to-buyer: false    # Keep commission on refund
+  partial-refund-enabled: true         # Allow partial refunds
+  multiple-refunds-enabled: true       # Allow multiple refunds per order
+  max-days-after-settlement: 90        # 90-day refund window
+  require-settled-status: true         # Only refund settled orders
+  allow-negative-balance: false        # Prevent merchant overdraft
+  auto-execute-pending: true           # Auto-execute when funds available
+  pending-funds-expiry-days: 30        # Expire pending refunds after 30 days
+```
+
+## Development Workflow
+
+### 1. Set Up Environment
+
+```bash
+# Start PostgreSQL (via Docker)
+docker run -d --name mwallet-postgres \
+  -e POSTGRES_DB=mwallet \
+  -e POSTGRES_USER=user \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 \
+  postgres:16.6
+
+# Build project
+mvn clean install
+
+# Run tests
+mvn test
+```
+
+### 2. Make Changes
+
+1. Update code following [CLAUDE.md](../CLAUDE.md) rules
+2. Write tests following [Testing Guide](./testing.md)
+3. Update documentation if architecture/API changes
+4. Verify tests pass: `mvn test`
+
+### 3. Create Release
+
+1. Update version in `pom.xml`
+2. Add release notes to `RELEASES.md`
+3. Tag release: `git tag v1.x.x`
+4. Push: `git push origin v1.x.x`
+
+## Support and Contribution
+
+### Getting Help
+
+- Read documentation in `docs/` folder
+- Check `CLAUDE.md` for coding standards
+- Review `RELEASES.md` for version history
+
+### Contributing
+
+1. Follow Google Java Style Guide
+2. Adhere to CLAUDE.md rules
+3. Write comprehensive tests
+4. Update documentation for architectural changes
+5. Keep commits focused and well-described
 
 ## Related Documentation
 
-- [**CLAUDE.md**](../CLAUDE.md) - Engineering policies and coding standards
-- [**README.md**](../README.md) - System overview and architecture principles
-- [**RELEASES.md**](../RELEASES.md) - Release notes and changelog
-
-## Contributing
-
-When contributing to mWallet:
-
-1. Follow the engineering principles in [CLAUDE.md](../CLAUDE.md)
-2. Update relevant documentation when making architectural changes
-3. Ensure all tests pass before submitting changes
-4. Add tests for new functionality
-
-## Support
-
-For questions or issues:
-1. Check this documentation first
-2. Review the [Architecture Documentation](./architecture/overview.md)
-3. Consult the [Service API Reference](./api/services.md)
+- [CLAUDE.md](../CLAUDE.md) - Coding standards and rules
+- [RELEASES.md](../RELEASES.md) - Version history and release notes
+- [Architecture Overview](./architecture.md) - Detailed architecture guide
+- [API Design](./api-design.md) - API separation rationale
+- [Testing Guide](./testing.md) - How to write and run tests
+- [Exception Handling](./exception-handling.md) - Error handling patterns
