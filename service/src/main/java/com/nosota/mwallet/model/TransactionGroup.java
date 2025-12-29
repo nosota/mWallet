@@ -38,4 +38,12 @@ public class TransactionGroup {
      */
     @Column(name = "merchant_id")
     private Long merchantId;
+
+    /**
+     * ID of the buyer associated with this transaction group.
+     * Used for refund operations to identify who receives the refund.
+     * Nullable for non-buyer transactions.
+     */
+    @Column(name = "buyer_id")
+    private Long buyerId;
 }

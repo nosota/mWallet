@@ -1,9 +1,12 @@
 package com.nosota.mwallet.api;
 
 import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.RefundHistoryDTO;
 import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
 import com.nosota.mwallet.api.dto.TransactionDTO;
+import com.nosota.mwallet.api.request.RefundRequest;
 import com.nosota.mwallet.api.response.*;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -236,4 +239,53 @@ public interface LedgerApi {
             @PathVariable("merchantId") Long merchantId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size);
+
+    // ==================== Refund Operations ====================
+
+    /**
+     * Creates and potentially executes a refund.
+     *
+     * <p>The refund may be executed immediately or placed in PENDING_FUNDS status
+     * depending on merchant balance availability.
+     *
+     * @param request Refund request details (order ID, amount, reason, initiator)
+     * @return Created refund response
+     */
+    @PostMapping("/refund")
+    ResponseEntity<RefundResponse> createRefund(
+            @RequestBody @Valid RefundRequest request);
+
+    /**
+     * Gets a specific refund by ID.
+     *
+     * @param refundId The refund ID
+     * @return Refund response
+     */
+    @GetMapping("/refund/{refundId}")
+    ResponseEntity<RefundResponse> getRefund(
+            @PathVariable("refundId") UUID refundId);
+
+    /**
+     * Gets refund history for a merchant with pagination.
+     *
+     * @param merchantId The merchant ID
+     * @param page       Page number (0-indexed)
+     * @param size       Page size
+     * @return Paginated list of refunds
+     */
+    @GetMapping("/refund/merchants/{merchantId}/history")
+    ResponseEntity<PagedResponse<RefundHistoryDTO>> getRefundHistory(
+            @PathVariable("merchantId") Long merchantId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size);
+
+    /**
+     * Gets all refunds for a specific order (transaction group).
+     *
+     * @param transactionGroupId The transaction group ID (order ID)
+     * @return List of refunds for this order
+     */
+    @GetMapping("/refund/orders/{transactionGroupId}")
+    ResponseEntity<List<RefundResponse>> getRefundsByOrder(
+            @PathVariable("transactionGroupId") UUID transactionGroupId);
 }

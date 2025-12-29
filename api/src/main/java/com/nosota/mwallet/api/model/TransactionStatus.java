@@ -33,5 +33,14 @@ public enum TransactionStatus {
      * Creates opposite direction transactions (e.g., DEBIT becomes CREDIT).
      * This is a final state - no further changes possible due to immutability.
      */
-    CANCELLED
+    CANCELLED,
+
+    /**
+     * REFUNDED: Transaction refunded after settlement.
+     * Used when funds are returned to buyer AFTER merchant already received payment.
+     * Differs from RELEASED/CANCELLED (which happen before settlement from ESCROW).
+     * Creates new transactions: MERCHANT → BUYER (debit from merchant, credit to buyer).
+     * This is a final state - no further changes possible due to immutability.
+     */
+    REFUNDED
 }

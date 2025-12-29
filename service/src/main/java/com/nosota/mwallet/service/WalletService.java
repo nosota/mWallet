@@ -316,4 +316,84 @@ public class WalletService {
 
         return savedTransaction.getId();
     }
+
+    /**
+     * Processes a refund by transferring funds from merchant wallet to buyer wallet.
+     *
+     * <p>This operation is different from RELEASE/CANCEL which return funds from ESCROW.
+     * Refund happens AFTER settlement when merchant already received the funds.
+     *
+     * <p>Creates two transactions atomically:
+     * <ul>
+     *   <li>DEBIT from merchant wallet: -amount, DEBIT, REFUNDED</li>
+     *   <li>CREDIT to buyer wallet: +amount, CREDIT, REFUNDED</li>
+     * </ul>
+     *
+     * <p>Example: Refund $100 from merchant to buyer
+     * → Creates: -100, DEBIT, REFUNDED (on merchant wallet)
+     * → Creates: +100, CREDIT, REFUNDED (on buyer wallet)
+     *
+     * <p>Both transactions share the same referenceId (refund transaction group ID).
+     * The merchant wallet must have sufficient available balance.
+     *
+     * @param merchantWalletId The wallet ID of the merchant (funds source)
+     * @param buyerWalletId    The wallet ID of the buyer (funds destination)
+     * @param amount           The amount to refund (must be positive)
+     * @param referenceId      UUID for refund transaction group (links debit and credit)
+     * @return The referenceId of the created refund transactions
+     * @throws WalletNotFoundException    if either wallet does not exist
+     * @throws InsufficientFundsException if merchant wallet has insufficient available balance
+     */
+    @Transactional
+    public UUID refund(@NotNull Integer merchantWalletId,
+                       @NotNull Integer buyerWalletId,
+                       @Positive Long amount,
+                       @NotNull UUID referenceId)
+            throws WalletNotFoundException, InsufficientFundsException {
+
+        // Verify both wallets exist
+        Wallet merchantWallet = walletRepository.findById(merchantWalletId)
+                .orElseThrow(() -> new WalletNotFoundException("Merchant wallet with ID " + merchantWalletId + " not found"));
+
+        Wallet buyerWallet = walletRepository.findById(buyerWalletId)
+                .orElseThrow(() -> new WalletNotFoundException("Buyer wallet with ID " + buyerWalletId + " not found"));
+
+        // Check merchant has sufficient funds
+        Long availableBalance = walletBalanceService.getAvailableBalance(merchantWalletId);
+        if (availableBalance < amount) {
+            throw new InsufficientFundsException(
+                    String.format("Insufficient funds in merchant wallet %d for refund: available=%d, required=%d",
+                            merchantWalletId, availableBalance, amount));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // Create DEBIT transaction on merchant wallet (negative amount)
+        Transaction merchantDebit = new Transaction();
+        merchantDebit.setWalletId(merchantWalletId);
+        merchantDebit.setAmount(-amount);
+        merchantDebit.setType(TransactionType.DEBIT);
+        merchantDebit.setStatus(TransactionStatus.REFUNDED);
+        merchantDebit.setReferenceId(referenceId);
+        merchantDebit.setConfirmRejectTimestamp(now);
+
+        Transaction savedMerchantDebit = transactionRepository.save(merchantDebit);
+
+        // Create CREDIT transaction on buyer wallet (positive amount)
+        Transaction buyerCredit = new Transaction();
+        buyerCredit.setWalletId(buyerWalletId);
+        buyerCredit.setAmount(amount);
+        buyerCredit.setType(TransactionType.CREDIT);
+        buyerCredit.setStatus(TransactionStatus.REFUNDED);
+        buyerCredit.setReferenceId(referenceId);
+        buyerCredit.setConfirmRejectTimestamp(now);
+
+        Transaction savedBuyerCredit = transactionRepository.save(buyerCredit);
+
+        log.info("Refund completed: merchantWalletId={}, buyerWalletId={}, amount={}, referenceId={}, merchantTxId={}, buyerTxId={}",
+                merchantWalletId, buyerWalletId, amount, referenceId,
+                savedMerchantDebit.getId(), savedBuyerCredit.getId());
+
+        return referenceId;
+    }
 }

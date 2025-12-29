@@ -1,8 +1,10 @@
 package com.nosota.mwallet.api;
 
 import com.nosota.mwallet.api.dto.PagedResponse;
+import com.nosota.mwallet.api.dto.RefundHistoryDTO;
 import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
 import com.nosota.mwallet.api.dto.TransactionDTO;
+import com.nosota.mwallet.api.request.RefundRequest;
 import com.nosota.mwallet.api.response.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -265,6 +267,59 @@ public class LedgerClient implements LedgerApi {
                         .build(merchantId))
                 .retrieve()
                 .toEntity(new ParameterizedTypeReference<PagedResponse<SettlementHistoryDTO>>() {})
+                .block();
+    }
+
+    // ==================== Refund Operations ====================
+
+    @Override
+    public ResponseEntity<RefundResponse> createRefund(RefundRequest request) {
+        log.debug("Calling createRefund: transactionGroupId={}, amount={}, initiator={}",
+                request.transactionGroupId(), request.amount(), request.initiator());
+
+        return webClient.post()
+                .uri("/api/v1/ledger/refund")
+                .bodyValue(request)
+                .retrieve()
+                .toEntity(RefundResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<RefundResponse> getRefund(UUID refundId) {
+        log.debug("Calling getRefund: refundId={}", refundId);
+
+        return webClient.get()
+                .uri("/api/v1/ledger/refund/{refundId}", refundId)
+                .retrieve()
+                .toEntity(RefundResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<PagedResponse<RefundHistoryDTO>> getRefundHistory(
+            Long merchantId, int page, int size) {
+        log.debug("Calling getRefundHistory: merchantId={}, page={}, size={}", merchantId, page, size);
+
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/ledger/refund/merchants/{merchantId}/history")
+                        .queryParam("page", page)
+                        .queryParam("size", size)
+                        .build(merchantId))
+                .retrieve()
+                .toEntity(new ParameterizedTypeReference<PagedResponse<RefundHistoryDTO>>() {})
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<List<RefundResponse>> getRefundsByOrder(UUID transactionGroupId) {
+        log.debug("Calling getRefundsByOrder: transactionGroupId={}", transactionGroupId);
+
+        return webClient.get()
+                .uri("/api/v1/ledger/refund/orders/{transactionGroupId}", transactionGroupId)
+                .retrieve()
+                .toEntity(new ParameterizedTypeReference<List<RefundResponse>>() {})
                 .block();
     }
 }
