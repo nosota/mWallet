@@ -419,7 +419,7 @@
   1. [DONE] Начать с Settlement — быстрая победа, не требует изменения core архитектуры
   2. [DONE] Затем Refund — требует осторожности при добавлении статуса
   3. [DONE] Обновить документацию — docs/architecture/transaction-lifecycle.md нужно дополнить новыми статусами
-  4. Написать integration tests — особенно для refund (проверка баланса, невозможность двойного refund)
+  4. [DONE] Написать integration tests — особенно для refund (проверка баланса, невозможность двойного refund)
   5. Автоматический settlement по расписанию
   6. Экспорт settlement отчетов
   7. Partial refund с комиссией
