@@ -68,6 +68,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     List<Transaction> findAllByWalletIdAndStatus(Integer walletId, TransactionStatus status);
 
     /**
+     * Retrieves all transactions for a specific wallet, reference ID, and status.
+     *
+     * @param walletId The ID of the wallet to filter transactions by.
+     * @param referenceId The reference ID (transaction group) to filter by.
+     * @param status The status of the transactions to retrieve.
+     * @return A list of transactions matching the criteria.
+     */
+    List<Transaction> findAllByWalletIdAndReferenceIdAndStatus(Integer walletId, UUID referenceId, TransactionStatus status);
+
+    /**
      * Retrieves all transactions associated with a specific wallet ID and a set of reference IDs.
      *
      * @param walletId The ID of the wallet to filter transactions by.

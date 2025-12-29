@@ -26,39 +26,39 @@ public class WalletBalanceService {
      *
      * <p>
      * The method calculates the available balance following banking ledger standards:
-     * Available Balance = Sum(SETTLED transactions) - Sum(HOLD transactions for IN_PROGRESS groups)
+     * Available Balance = Sum(SETTLED and REFUNDED transactions) - Sum(HOLD transactions for IN_PROGRESS groups)
      * </p>
      *
      * <p>
      * To calculate the available balance:
-     * 1. Sum up the amounts of all SETTLED transactions from both transaction and transaction_snapshot tables.
+     * 1. Sum up the amounts of all SETTLED and REFUNDED transactions from both transaction and transaction_snapshot tables.
      * 2. Subtract the sum of amounts of HOLD transactions that are part of transaction groups with IN_PROGRESS status.
      * 3. RELEASED and CANCELLED transactions net to zero (opposite direction) and don't affect balance.
      * </p>
      *
      * <p>
-     * Note: SETTLED is the only final status that affects balance. RELEASED and CANCELLED transactions
+     * Note: SETTLED and REFUNDED are the final statuses that affect balance. RELEASED and CANCELLED transactions
      * create offsetting entries that return funds to their original location, resulting in net zero effect.
      * </p>
      *
      * @param walletId The unique identifier (ID) of the wallet whose available balance is to be retrieved.
      *                 Must not be {@code null}.
      *
-     * @return The available balance of the wallet. It is the difference between the settled balance
+     * @return The available balance of the wallet. It is the difference between the settled/refunded balance
      *         and the amount on hold for incomplete transaction groups.
      *
      * @throws IllegalArgumentException If {@code walletId} is {@code null}.
      */
     @Transactional
     public Long getAvailableBalance(@NotNull Integer walletId) {
-        // 1. Get settled balance (only SETTLED transactions affect balance).
+        // 1. Get settled balance (SETTLED and REFUNDED transactions affect balance).
         String sql = """
             SELECT
-                SUM(amount)
+                COALESCE(SUM(amount), 0)
             FROM (
-                SELECT amount FROM transaction WHERE wallet_id = :walletId AND status = 'SETTLED'
+                SELECT amount FROM transaction WHERE wallet_id = :walletId AND (status = 'SETTLED' OR status = 'REFUNDED')
                 UNION ALL
-                SELECT amount FROM transaction_snapshot WHERE wallet_id = :walletId AND status = 'SETTLED'
+                SELECT amount FROM transaction_snapshot WHERE wallet_id = :walletId AND (status = 'SETTLED' OR status = 'REFUNDED')
             ) AS combined_data
         """;
 
@@ -77,6 +77,9 @@ public class WalletBalanceService {
 
         // 3. Calculate currently available balance.
         Long availableBalance = settledBalance - ongoingTransactionBalance;
+
+        log.info("Balance calculation for wallet {}: settled={}, hold={}, available={}",
+                walletId, settledBalance, ongoingTransactionBalance, availableBalance);
 
         return availableBalance;
     }

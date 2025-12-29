@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -172,28 +173,35 @@ public class WalletService {
     public Integer settle(@NotNull Integer walletId, @NotNull UUID referenceId)
             throws TransactionNotFoundException {
 
-        // Find the HOLD transaction
-        Transaction holdTransaction = transactionRepository
-                .findByWalletIdAndReferenceIdAndStatuses(walletId, referenceId, TransactionStatus.HOLD)
-                .orElseThrow(() -> new TransactionNotFoundException(
-                        String.format("HOLD transaction not found for wallet %d and reference %s",
-                                walletId, referenceId)));
+        // Find ALL HOLD transactions for this wallet and reference ID
+        List<Transaction> holdTransactions = transactionRepository
+                .findAllByWalletIdAndReferenceIdAndStatus(walletId, referenceId, TransactionStatus.HOLD);
 
-        // Create SETTLED transaction with same amount and type
-        Transaction settleTransaction = new Transaction();
-        settleTransaction.setWalletId(holdTransaction.getWalletId());
-        settleTransaction.setAmount(holdTransaction.getAmount());
-        settleTransaction.setType(holdTransaction.getType());
-        settleTransaction.setStatus(TransactionStatus.SETTLED);
-        settleTransaction.setReferenceId(referenceId);
-        settleTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+        if (holdTransactions.isEmpty()) {
+            throw new TransactionNotFoundException(
+                    String.format("HOLD transaction not found for wallet %d and reference %s",
+                            walletId, referenceId));
+        }
 
-        Transaction savedTransaction = transactionRepository.save(settleTransaction);
+        // Create SETTLED transaction for each HOLD transaction
+        Integer lastTransactionId = null;
+        for (Transaction holdTransaction : holdTransactions) {
+            Transaction settleTransaction = new Transaction();
+            settleTransaction.setWalletId(holdTransaction.getWalletId());
+            settleTransaction.setAmount(holdTransaction.getAmount());
+            settleTransaction.setType(holdTransaction.getType());
+            settleTransaction.setStatus(TransactionStatus.SETTLED);
+            settleTransaction.setReferenceId(referenceId);
+            settleTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
 
-        log.info("Settled transaction: walletId={}, amount={}, type={}, referenceId={}, transactionId={}",
-                walletId, holdTransaction.getAmount(), holdTransaction.getType(), referenceId, savedTransaction.getId());
+            Transaction savedTransaction = transactionRepository.save(settleTransaction);
+            lastTransactionId = savedTransaction.getId();
 
-        return savedTransaction.getId();
+            log.info("Settled transaction: walletId={}, amount={}, type={}, referenceId={}, transactionId={}",
+                    walletId, holdTransaction.getAmount(), holdTransaction.getType(), referenceId, savedTransaction.getId());
+        }
+
+        return lastTransactionId;
     }
 
     /**

@@ -21,7 +21,9 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -108,10 +110,14 @@ public class TransactionService {
                             referenceId, reconciliationAmount));
         }
 
-        // Settle all transactions in the group
+        // Settle all transactions in the group - process each unique wallet once
         List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
+        Set<Integer> processedWallets = new HashSet<>();
         for (Transaction transaction : transactions) {
-            walletService.settle(transaction.getWalletId(), referenceId);
+            if (!processedWallets.contains(transaction.getWalletId())) {
+                walletService.settle(transaction.getWalletId(), referenceId);
+                processedWallets.add(transaction.getWalletId());
+            }
         }
 
         // Update group status to SETTLED
