@@ -21,3 +21,22 @@ settlement:
   min-amount: 0
   # Minimum age of HOLD transactions to include in settlement (in days, 0 = include all)
   hold-age-days: 0
+
+# Refund configuration
+refund:
+  # Whether to return commission to buyer on refund
+  return-commission-to-buyer: false
+  # Enable partial refunds (if false, only full refunds allowed)
+  partial-refund-enabled: true
+  # Enable multiple refunds for the same order (if false, only one refund per order)
+  multiple-refunds-enabled: true
+  # Maximum days after settlement to allow refunds (0 = no limit)
+  max-days-after-settlement: 90
+  # Require settlement to be in EXECUTED status before refund
+  require-settled-status: true
+  # Allow merchant balance to go negative for refunds
+  allow-negative-balance: false
+  # Auto-execute pending refunds when merchant has sufficient balance
+  auto-execute-pending: true
+  # Days before pending refund expires and gets cancelled
+  pending-funds-expiry-days: 30
