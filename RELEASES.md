@@ -1,12 +1,23 @@
+## **Wallet System - Release Notes v1.1.0**
+
+### **Date:** 29.12.2025
+
+### **Overview:**
+
+This release implements **API architectural refactoring** with clear separation of concerns. The monolithic LedgerApi 
+has been split into two focused interfaces: **LedgerApi** for low-level ledger operations and **PaymentApi** for 
+high-level payment operations (settlement and refund). This improves code maintainability, testability, 
+and follows the Single Responsibility Principle.
+
 ## **Wallet System - Release Notes v1.0.9**
 
 ### **Date:** 29.12.2025
 
 ### **Overview:**
 
-This release implements **refund operations** for returning funds to buyers AFTER settlement. Refunds differ 
-from RELEASE/CANCEL operations which return funds BEFORE settlement. The system supports full and partial refunds, 
-multiple refunds per order, configurable time windows, and intelligent balance checking with PENDING_FUNDS status 
+This release implements **refund operations** for returning funds to buyers AFTER settlement. Refunds differ
+from RELEASE/CANCEL operations which return funds BEFORE settlement. The system supports full and partial refunds,
+multiple refunds per order, configurable time windows, and intelligent balance checking with PENDING_FUNDS status
 for merchants with insufficient balance.
 
 ---
