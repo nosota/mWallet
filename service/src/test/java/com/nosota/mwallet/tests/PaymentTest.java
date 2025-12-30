@@ -140,6 +140,27 @@ public class PaymentTest extends TestBase {
         GroupStatusResponse statusResponse = objectMapper.readValue(statusJson, GroupStatusResponse.class);
 
         assertThat(statusResponse.status()).isEqualTo("SETTLED");
+
+        // Assert: Verify zero-sum
+        MvcResult reconciliationResult = mockMvc.perform(get("/api/v1/ledger/reconciliation"))
+                .andExpect(status().isOk())
+                .andReturn();
+        ReconciliationResponse reconciliation = objectMapper.readValue(
+                reconciliationResult.getResponse().getContentAsString(),
+                ReconciliationResponse.class);
+        assertThat(reconciliation.totalSum()).isEqualTo(0L);
+
+        // Assert: Verify transactions (2 HOLD + 2 SETTLED)
+        MvcResult txResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<TransactionDTO> txList = objectMapper.readValue(
+                txResult.getResponse().getContentAsString(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class));
+
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.HOLD).count()).isEqualTo(4);
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.SETTLED).count()).isEqualTo(4);
+        assertThat(txList).hasSize(8);
     }
 
     @Test
@@ -194,22 +215,26 @@ public class PaymentTest extends TestBase {
 
         assertThat(statusResponse.status()).isEqualTo("CANCELLED");
 
-        // Assert: Verify CANCELLED transactions were created (reversal)
-        MvcResult transactionsResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
+        // Assert: Verify zero-sum
+        MvcResult reconciliationResult = mockMvc.perform(get("/api/v1/ledger/reconciliation"))
                 .andExpect(status().isOk())
                 .andReturn();
+        ReconciliationResponse reconciliation = objectMapper.readValue(
+                reconciliationResult.getResponse().getContentAsString(),
+                ReconciliationResponse.class);
+        assertThat(reconciliation.totalSum()).isEqualTo(0L);
 
-        String transactionsJson = transactionsResult.getResponse().getContentAsString();
-        List<TransactionDTO> transactions = objectMapper.readValue(
-                transactionsJson,
-                objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class)
-        );
+        // Assert: Verify transactions (2 HOLD + 2 CANCELLED)
+        MvcResult txResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<TransactionDTO> txList = objectMapper.readValue(
+                txResult.getResponse().getContentAsString(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class));
 
-        // Should have HOLD + CANCELLED transactions
-        boolean hasCancelledTransactions = transactions.stream()
-                .anyMatch(t -> t.getStatus() == TransactionStatus.CANCELLED);
-
-        assertThat(hasCancelledTransactions).isTrue();
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.HOLD).count()).isEqualTo(4);
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.CANCELLED).count()).isEqualTo(4);
+        assertThat(txList).hasSize(8);
     }
 
     @Test
@@ -264,22 +289,26 @@ public class PaymentTest extends TestBase {
 
         assertThat(statusResponse.status()).isEqualTo("RELEASED");
 
-        // Assert: Verify RELEASED transactions were created
-        MvcResult transactionsResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
+        // Assert: Verify zero-sum
+        MvcResult reconciliationResult = mockMvc.perform(get("/api/v1/ledger/reconciliation"))
                 .andExpect(status().isOk())
                 .andReturn();
+        ReconciliationResponse reconciliation = objectMapper.readValue(
+                reconciliationResult.getResponse().getContentAsString(),
+                ReconciliationResponse.class);
+        assertThat(reconciliation.totalSum()).isEqualTo(0L);
 
-        String transactionsJson = transactionsResult.getResponse().getContentAsString();
-        List<TransactionDTO> transactions = objectMapper.readValue(
-                transactionsJson,
-                objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class)
-        );
+        // Assert: Verify transactions (2 HOLD + 2 RELEASED)
+        MvcResult txResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<TransactionDTO> txList = objectMapper.readValue(
+                txResult.getResponse().getContentAsString(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class));
 
-        // Should have HOLD + RELEASED transactions
-        boolean hasReleasedTransactions = transactions.stream()
-                .anyMatch(t -> t.getStatus() == TransactionStatus.RELEASED);
-
-        assertThat(hasReleasedTransactions).isTrue();
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.HOLD).count()).isEqualTo(4);
+        assertThat(txList.stream().filter(t -> t.getStatus() == TransactionStatus.RELEASED).count()).isEqualTo(4);
+        assertThat(txList).hasSize(8);
     }
 
     @Test
@@ -316,6 +345,10 @@ public class PaymentTest extends TestBase {
         ReconciliationResponse reconciliation = objectMapper.readValue(reconciliationJson, ReconciliationResponse.class);
 
         assertThat(reconciliation.totalSum()).isEqualTo(0L);
+
+        // Assert: Verify balance after deposit
+        Long userBalance = walletBalanceService.getAvailableBalance(userWalletId);
+        assertThat(userBalance).isEqualTo(50000L);
 
         // Assert: Verify transactions
         UUID referenceId = depositResponse.referenceId();
@@ -394,6 +427,10 @@ public class PaymentTest extends TestBase {
         ReconciliationResponse reconciliation = objectMapper.readValue(reconciliationJson, ReconciliationResponse.class);
 
         assertThat(reconciliation.totalSum()).isEqualTo(0L);
+
+        // Assert: Verify balance after withdrawal
+        Long merchantBalance = walletBalanceService.getAvailableBalance(merchantWalletId);
+        assertThat(merchantBalance).isEqualTo(10000L);
 
         // Assert: Verify transactions
         UUID referenceId = withdrawalResponse.referenceId();
