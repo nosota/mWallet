@@ -3,9 +3,13 @@ package com.nosota.mwallet.api;
 import com.nosota.mwallet.api.dto.PagedResponse;
 import com.nosota.mwallet.api.dto.RefundHistoryDTO;
 import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
+import com.nosota.mwallet.api.request.DepositRequest;
 import com.nosota.mwallet.api.request.RefundRequest;
+import com.nosota.mwallet.api.request.WithdrawalRequest;
+import com.nosota.mwallet.api.response.DepositResponse;
 import com.nosota.mwallet.api.response.RefundResponse;
 import com.nosota.mwallet.api.response.SettlementResponse;
+import com.nosota.mwallet.api.response.WithdrawalResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -125,4 +129,44 @@ public interface PaymentApi {
     @GetMapping("/refund/orders/{transactionGroupId}")
     ResponseEntity<List<RefundResponse>> getRefundsByOrder(
             @PathVariable("transactionGroupId") UUID transactionGroupId);
+
+    // ==================== Deposit/Withdrawal Operations ====================
+
+    /**
+     * Deposits funds to a wallet from external source.
+     *
+     * <p>Creates proper double-entry bookkeeping:
+     * <ul>
+     *   <li>DEBIT from DEPOSIT system wallet (goes negative - source of funds)</li>
+     *   <li>CREDIT to target wallet (receives the funds)</li>
+     * </ul>
+     *
+     * <p>The DEPOSIT wallet represents the external world (banks, payment processors).
+     * Its negative balance shows how much real money entered the system.
+     *
+     * @param request Deposit request (walletId, amount, externalReference)
+     * @return Deposit response with operation details
+     */
+    @PostMapping("/deposit")
+    ResponseEntity<DepositResponse> deposit(
+            @RequestBody @Valid DepositRequest request) throws Exception;
+
+    /**
+     * Withdraws funds from a wallet to external destination.
+     *
+     * <p>Creates proper double-entry bookkeeping:
+     * <ul>
+     *   <li>DEBIT from source wallet (loses the funds)</li>
+     *   <li>CREDIT to WITHDRAWAL system wallet (goes positive - destination tracking)</li>
+     * </ul>
+     *
+     * <p>The WITHDRAWAL wallet represents money leaving the system to external world.
+     * Its positive balance shows how much real money left the system.
+     *
+     * @param request Withdrawal request (walletId, amount, destinationAccount)
+     * @return Withdrawal response with operation details
+     */
+    @PostMapping("/withdrawal")
+    ResponseEntity<WithdrawalResponse> withdraw(
+            @RequestBody @Valid WithdrawalRequest request) throws Exception;
 }

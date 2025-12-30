@@ -4,14 +4,20 @@ import com.nosota.mwallet.api.PaymentApi;
 import com.nosota.mwallet.api.dto.PagedResponse;
 import com.nosota.mwallet.api.dto.RefundHistoryDTO;
 import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
+import com.nosota.mwallet.api.request.DepositRequest;
 import com.nosota.mwallet.api.request.RefundRequest;
+import com.nosota.mwallet.api.request.WithdrawalRequest;
+import com.nosota.mwallet.api.response.DepositResponse;
 import com.nosota.mwallet.api.response.RefundResponse;
 import com.nosota.mwallet.api.response.SettlementResponse;
+import com.nosota.mwallet.api.response.WithdrawalResponse;
 import com.nosota.mwallet.dto.SettlementCalculation;
 import com.nosota.mwallet.model.Refund;
 import com.nosota.mwallet.model.Settlement;
+import com.nosota.mwallet.service.DepositService;
 import com.nosota.mwallet.service.RefundService;
 import com.nosota.mwallet.service.SettlementService;
+import com.nosota.mwallet.service.WithdrawalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +47,8 @@ public class PaymentController implements PaymentApi {
 
     private final SettlementService settlementService;
     private final RefundService refundService;
+    private final DepositService depositService;
+    private final WithdrawalService withdrawalService;
 
     // ==================== Settlement Operations ====================
 
@@ -206,5 +214,53 @@ public class PaymentController implements PaymentApi {
                 refund.getCreatedAt(),
                 refund.getProcessedAt()
         );
+    }
+
+    // ==================== Deposit/Withdrawal Operations ====================
+
+    @Override
+    public ResponseEntity<DepositResponse> deposit(DepositRequest request) throws Exception {
+        log.info("Deposit request: walletId={}, amount={}, externalReference={}",
+                request.walletId(), request.amount(), request.externalReference());
+
+        UUID referenceId = depositService.deposit(
+                request.walletId(),
+                request.amount(),
+                request.externalReference()
+        );
+
+        DepositResponse response = new DepositResponse(
+                referenceId,
+                request.walletId(),
+                request.amount(),
+                request.externalReference(),
+                "COMPLETED",
+                java.time.LocalDateTime.now()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Override
+    public ResponseEntity<WithdrawalResponse> withdraw(WithdrawalRequest request) throws Exception {
+        log.info("Withdrawal request: walletId={}, amount={}, destinationAccount={}",
+                request.walletId(), request.amount(), request.destinationAccount());
+
+        UUID referenceId = withdrawalService.withdraw(
+                request.walletId(),
+                request.amount(),
+                request.destinationAccount()
+        );
+
+        WithdrawalResponse response = new WithdrawalResponse(
+                referenceId,
+                request.walletId(),
+                request.amount(),
+                request.destinationAccount(),
+                "COMPLETED",
+                java.time.LocalDateTime.now()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

@@ -3,9 +3,13 @@ package com.nosota.mwallet.api;
 import com.nosota.mwallet.api.dto.PagedResponse;
 import com.nosota.mwallet.api.dto.RefundHistoryDTO;
 import com.nosota.mwallet.api.dto.SettlementHistoryDTO;
+import com.nosota.mwallet.api.request.DepositRequest;
 import com.nosota.mwallet.api.request.RefundRequest;
+import com.nosota.mwallet.api.request.WithdrawalRequest;
+import com.nosota.mwallet.api.response.DepositResponse;
 import com.nosota.mwallet.api.response.RefundResponse;
 import com.nosota.mwallet.api.response.SettlementResponse;
+import com.nosota.mwallet.api.response.WithdrawalResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -149,6 +153,34 @@ public class PaymentClient implements PaymentApi {
                 .uri("/api/v1/payment/refund/orders/{transactionGroupId}", transactionGroupId)
                 .retrieve()
                 .toEntity(new ParameterizedTypeReference<List<RefundResponse>>() {})
+                .block();
+    }
+
+    // ==================== Deposit/Withdrawal Operations ====================
+
+    @Override
+    public ResponseEntity<DepositResponse> deposit(DepositRequest request) throws Exception {
+        log.debug("Calling deposit: walletId={}, amount={}, externalReference={}",
+                request.walletId(), request.amount(), request.externalReference());
+
+        return webClient.post()
+                .uri("/api/v1/payment/deposit")
+                .bodyValue(request)
+                .retrieve()
+                .toEntity(DepositResponse.class)
+                .block();
+    }
+
+    @Override
+    public ResponseEntity<WithdrawalResponse> withdraw(WithdrawalRequest request) throws Exception {
+        log.debug("Calling withdraw: walletId={}, amount={}, destinationAccount={}",
+                request.walletId(), request.amount(), request.destinationAccount());
+
+        return webClient.post()
+                .uri("/api/v1/payment/withdrawal")
+                .bodyValue(request)
+                .retrieve()
+                .toEntity(WithdrawalResponse.class)
                 .block();
     }
 }

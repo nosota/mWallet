@@ -7,6 +7,7 @@ import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.api.model.TransactionStatus;
 import com.nosota.mwallet.api.model.TransactionType;
 import com.nosota.mwallet.model.Wallet;
+import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.repository.TransactionRepository;
 import com.nosota.mwallet.repository.WalletRepository;
 import jakarta.transaction.Transactional;
@@ -75,12 +76,14 @@ public class WalletService {
         Wallet wallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        // Check sufficient funds (pessimistic locking handled by balance service)
-        Long availableBalance = walletBalanceService.getAvailableBalance(walletId);
-        if (availableBalance < amount) {
-            throw new InsufficientFundsException(
-                    String.format("Insufficient funds in wallet %d: available=%d, required=%d",
-                            walletId, availableBalance, amount));
+        // Check sufficient funds (skip for SYSTEM wallets - they can go infinitely negative/positive)
+        if (wallet.getType() != WalletType.SYSTEM) {
+            Long availableBalance = walletBalanceService.getAvailableBalance(walletId);
+            if (availableBalance < amount) {
+                throw new InsufficientFundsException(
+                        String.format("Insufficient funds in wallet %d: available=%d, required=%d",
+                                walletId, availableBalance, amount));
+            }
         }
 
         // Get ESCROW wallet for holding funds

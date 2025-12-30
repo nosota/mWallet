@@ -9,6 +9,7 @@ import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
 import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.api.model.TransactionStatus;
+import com.nosota.mwallet.api.model.TransactionType;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,6 +23,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -193,10 +195,33 @@ public class TransactionService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "No transaction group found with referenceId: " + referenceId));
 
-        // Release all transactions in the group (opposite direction)
+        // Release all HOLD transactions in the group (create offsetting RELEASED transactions)
         List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
-        for (Transaction transaction : transactions) {
-            walletService.release(transaction.getWalletId(), referenceId);
+        List<Transaction> holdTransactions = transactions.stream()
+                .filter(t -> t.getStatus() == TransactionStatus.HOLD)
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Transaction holdTransaction : holdTransactions) {
+            // Create RELEASED transaction with OPPOSITE amount and type
+            TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
+                    ? TransactionType.CREDIT
+                    : TransactionType.DEBIT;
+
+            Transaction releaseTransaction = new Transaction();
+            releaseTransaction.setWalletId(holdTransaction.getWalletId());
+            releaseTransaction.setAmount(-holdTransaction.getAmount()); // Flip sign
+            releaseTransaction.setType(oppositeType); // Flip type
+            releaseTransaction.setStatus(TransactionStatus.RELEASED);
+            releaseTransaction.setReferenceId(referenceId);
+            releaseTransaction.setConfirmRejectTimestamp(now);
+            releaseTransaction.setCurrency(holdTransaction.getCurrency());
+
+            transactionRepository.save(releaseTransaction);
+
+            log.debug("Released transaction: walletId={}, originalAmount={}, releaseAmount={}, originalType={}, releaseType={}",
+                    holdTransaction.getWalletId(), holdTransaction.getAmount(), releaseTransaction.getAmount(),
+                    holdTransaction.getType(), releaseTransaction.getType());
         }
 
         // Update group status to RELEASED
@@ -239,10 +264,33 @@ public class TransactionService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "No transaction group found with referenceId: " + referenceId));
 
-        // Cancel all transactions in the group (opposite direction)
+        // Cancel all HOLD transactions in the group (create offsetting CANCELLED transactions)
         List<Transaction> transactions = transactionRepository.findByReferenceIdOrderByIdDesc(referenceId);
-        for (Transaction transaction : transactions) {
-            walletService.cancel(transaction.getWalletId(), referenceId);
+        List<Transaction> holdTransactions = transactions.stream()
+                .filter(t -> t.getStatus() == TransactionStatus.HOLD)
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Transaction holdTransaction : holdTransactions) {
+            // Create CANCELLED transaction with OPPOSITE amount and type
+            TransactionType oppositeType = holdTransaction.getType() == TransactionType.DEBIT
+                    ? TransactionType.CREDIT
+                    : TransactionType.DEBIT;
+
+            Transaction cancelTransaction = new Transaction();
+            cancelTransaction.setWalletId(holdTransaction.getWalletId());
+            cancelTransaction.setAmount(-holdTransaction.getAmount()); // Flip sign
+            cancelTransaction.setType(oppositeType); // Flip type
+            cancelTransaction.setStatus(TransactionStatus.CANCELLED);
+            cancelTransaction.setReferenceId(referenceId);
+            cancelTransaction.setConfirmRejectTimestamp(now);
+            cancelTransaction.setCurrency(holdTransaction.getCurrency());
+
+            transactionRepository.save(cancelTransaction);
+
+            log.debug("Cancelled transaction: walletId={}, originalAmount={}, cancelAmount={}, originalType={}, cancelType={}",
+                    holdTransaction.getWalletId(), holdTransaction.getAmount(), cancelTransaction.getAmount(),
+                    holdTransaction.getType(), cancelTransaction.getType());
         }
 
         // Update group status to CANCELLED
