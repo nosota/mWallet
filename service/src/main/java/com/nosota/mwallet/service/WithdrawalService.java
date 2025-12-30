@@ -64,15 +64,12 @@ public class WithdrawalService {
         Integer withdrawalWalletId = walletManagementService.getOrCreateWithdrawalWallet();
         log.debug("Using WITHDRAWAL wallet: walletId={}", withdrawalWalletId);
 
-        // 4. Create transfer: SOURCE → WITHDRAWAL
-        // This creates proper double-entry bookkeeping:
-        // - Transaction 1: DEBIT from source wallet (-amount)
-        // - Transaction 2: CREDIT to WITHDRAWAL wallet (+amount)
+        // 4. Create direct transfer: SOURCE → WITHDRAWAL (SETTLED immediately)
+        // This creates 2 SETTLED transactions (no HOLD phase needed):
+        // - Transaction 1: DEBIT from source wallet (-amount, SETTLED)
+        // - Transaction 2: CREDIT to WITHDRAWAL wallet (+amount, SETTLED)
         // - Sum: 0 (zero-sum maintained)
-        String description = "Withdrawal to external destination" +
-                (destinationAccount != null ? " (dest: " + destinationAccount + ")" : "");
-
-        UUID referenceId = transactionService.transferBetweenTwoWallets(
+        UUID referenceId = transactionService.directTransfer(
                 walletId,
                 withdrawalWalletId,
                 amount

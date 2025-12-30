@@ -54,15 +54,12 @@ public class DepositService {
         walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        // 3. Create transfer: DEPOSIT → TARGET
-        // This creates proper double-entry bookkeeping:
-        // - Transaction 1: DEBIT from DEPOSIT wallet (-amount)
-        // - Transaction 2: CREDIT to target wallet (+amount)
+        // 3. Create direct transfer: DEPOSIT → TARGET (SETTLED immediately)
+        // This creates 2 SETTLED transactions (no HOLD phase needed):
+        // - Transaction 1: DEBIT from DEPOSIT wallet (-amount, SETTLED)
+        // - Transaction 2: CREDIT to target wallet (+amount, SETTLED)
         // - Sum: 0 (zero-sum maintained)
-        String description = "Deposit from external source" +
-                (externalReference != null ? " (ref: " + externalReference + ")" : "");
-
-        UUID referenceId = transactionService.transferBetweenTwoWallets(
+        UUID referenceId = transactionService.directTransfer(
                 depositWalletId,
                 walletId,
                 amount

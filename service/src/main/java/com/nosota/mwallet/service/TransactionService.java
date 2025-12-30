@@ -7,6 +7,7 @@ import com.nosota.mwallet.error.TransactionGroupZeroingOutException;
 import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
+import com.nosota.mwallet.model.Wallet;
 import com.nosota.mwallet.api.model.TransactionGroupStatus;
 import com.nosota.mwallet.api.model.TransactionStatus;
 import com.nosota.mwallet.api.model.TransactionType;
@@ -51,6 +52,7 @@ public class TransactionService {
     private final WalletService walletService;
     private final TransactionGroupRepository transactionGroupRepository;
     private final TransactionRepository transactionRepository;
+    private final com.nosota.mwallet.repository.WalletRepository walletRepository;
 
     /**
      * Creates a new transaction group in IN_PROGRESS state.
@@ -360,6 +362,76 @@ public class TransactionService {
     }
 
     /**
+     * Direct transfer: creates SETTLED transactions immediately without HOLD phase.
+     *
+     * <p>This method bypasses the two-phase commit (HOLD → SETTLE) and creates
+     * SETTLED transactions directly. Use for:
+     * <ul>
+     *   <li>Deposit (external funds entering system)</li>
+     *   <li>Withdrawal (funds leaving system)</li>
+     *   <li>Simple transfers without dispute risk</li>
+     * </ul>
+     *
+     * <p>Creates 2 transactions:
+     * <ul>
+     *   <li>DEBIT from sender: -amount, DEBIT, SETTLED</li>
+     *   <li>CREDIT to recipient: +amount, CREDIT, SETTLED</li>
+     * </ul>
+     *
+     * <p>Zero-sum is guaranteed: sum of all transactions = 0
+     *
+     * @param fromWalletId Sender wallet ID
+     * @param toWalletId   Recipient wallet ID
+     * @param amount       Amount to transfer (in cents/minor units, must be positive)
+     * @return Transaction group UUID (referenceId)
+     * @throws EntityNotFoundException  If either wallet not found
+     * @throws IllegalArgumentException If wallets have different currencies
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public UUID directTransfer(@NotNull Integer fromWalletId, @NotNull Integer toWalletId,
+                                @Positive Long amount) {
+        // 1. Verify wallets exist and get currency
+        Wallet fromWallet = walletRepository.findById(fromWalletId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "From wallet not found: " + fromWalletId));
+
+        Wallet toWallet = walletRepository.findById(toWalletId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "To wallet not found: " + toWalletId));
+
+        // 2. Validate currency match
+        if (!fromWallet.getCurrency().equals(toWallet.getCurrency())) {
+            throw new IllegalArgumentException(
+                    String.format("Currency mismatch: %s → %s",
+                            fromWallet.getCurrency(), toWallet.getCurrency()));
+        }
+
+        String currency = fromWallet.getCurrency();
+
+        // 3. Create transaction group (SETTLED)
+        UUID referenceId = createTransactionGroup();
+
+        // 4. Create SETTLED transactions
+        createTransaction(fromWalletId, -amount, TransactionType.DEBIT,
+                TransactionStatus.SETTLED, referenceId, currency);
+
+        createTransaction(toWalletId, amount, TransactionType.CREDIT,
+                TransactionStatus.SETTLED, referenceId, currency);
+
+        // 5. Update group status to SETTLED
+        TransactionGroup group = transactionGroupRepository.findById(referenceId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Transaction group not found: " + referenceId));
+        group.setStatus(TransactionGroupStatus.SETTLED);
+        transactionGroupRepository.save(group);
+
+        log.info("Direct transfer completed: from={}, to={}, amount={}, currency={}, referenceId={}",
+                fromWalletId, toWalletId, amount, currency, referenceId);
+
+        return referenceId;
+    }
+
+    /**
      * Retrieves the current status of a transaction group.
      *
      * <p>Possible statuses:
@@ -425,5 +497,43 @@ public class TransactionService {
                 totalSum, settledSum, holdSum, releasedSum, cancelledSum, refundedSum);
 
         return reconciliation;
+    }
+
+    /**
+     * Helper method to create a transaction.
+     *
+     * @param walletId    Wallet ID
+     * @param amount      Amount (positive for CREDIT, negative for DEBIT)
+     * @param type        Transaction type (DEBIT/CREDIT)
+     * @param status      Transaction status (HOLD/SETTLED/CANCELLED/RELEASED)
+     * @param referenceId Reference ID (transaction group UUID)
+     * @param currency    Currency code
+     * @return Saved transaction entity
+     */
+    private Transaction createTransaction(
+            Integer walletId,
+            Long amount,
+            TransactionType type,
+            TransactionStatus status,
+            UUID referenceId,
+            String currency
+    ) {
+        Transaction tx = new Transaction();
+        tx.setWalletId(walletId);
+        tx.setAmount(amount);
+        tx.setType(type);
+        tx.setStatus(status);
+        tx.setReferenceId(referenceId);
+        tx.setCurrency(currency);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (status == TransactionStatus.HOLD) {
+            tx.setHoldReserveTimestamp(now);
+        } else {
+            // SETTLED, CANCELLED, RELEASED
+            tx.setConfirmRejectTimestamp(now);
+        }
+
+        return transactionRepository.save(tx);
     }
 }
