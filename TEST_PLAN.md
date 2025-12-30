@@ -12,10 +12,10 @@
 
 1. [Общая информация](#1-общая-информация)
 2. [Тестовое окружение](#2-тестовое-окружение)
-3. [Ledger Tests](#3-ledger-tests)
-4. [Wallet Tests](#4-wallet-tests)
-5. [Payment Tests](#5-payment-tests)
-6. [Escrow Tests](#6-escrow-tests)
+3. [Ledger Tests](#3-ledger-tests) ✅ Готово
+4. [Wallet Tests](#4-wallet-tests) ✅ Готово
+5. [Payment Tests](#5-payment-tests) ✅ Готово
+6. [Escrow Tests](#6-escrow-tests) ✅ Готово
 7. [Balance Tests](#7-balance-tests)
 8. [Settlement Tests](#8-settlement-tests)
 9. [Refund Tests](#9-refund-tests)

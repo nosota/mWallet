@@ -1,6 +1,7 @@
 package com.nosota.mwallet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nosota.mwallet.api.response.TransactionGroupResponse;
 import com.nosota.mwallet.model.OwnerType;
 import com.nosota.mwallet.model.WalletType;
 import com.nosota.mwallet.service.*;
@@ -15,11 +16,16 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
         classes = MwalletApplication.class,
@@ -146,5 +152,73 @@ public abstract class TestBase {
                 ownerIdCounter.getAndIncrement(),
                 OwnerType.MERCHANT_OWNER
         );
+    }
+
+    // ========== Ledger Helper Methods ==========
+
+    /**
+     * Helper method to create a transaction group via API.
+     *
+     * @return Transaction group UUID (referenceId)
+     * @throws Exception if API call fails
+     */
+    protected UUID createTransactionGroup() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/ledger/groups"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        TransactionGroupResponse response = objectMapper.readValue(json, TransactionGroupResponse.class);
+        return response.referenceId();
+    }
+
+    /**
+     * Helper method to perform hold-debit + hold-credit + settle as a single operation.
+     *
+     * <p>This method executes a complete hold-and-settle flow:
+     * <ol>
+     *   <li>Hold-debit from source wallet (creates 2 HOLD transactions via ESCROW)</li>
+     *   <li>Hold-credit to target wallet (creates 2 more HOLD transactions)</li>
+     *   <li>Settle the transaction group (creates 4 SETTLED transactions)</li>
+     * </ol>
+     *
+     * <p>Final result: 4 HOLD + 4 SETTLED = 8 transactions total.
+     *
+     * @param fromWalletId Source wallet
+     * @param toWalletId Target wallet
+     * @param amount Amount to transfer
+     * @param groupId Transaction group ID
+     * @throws Exception if any API call fails
+     */
+    protected void holdAndSettle(Integer fromWalletId, Integer toWalletId, Long amount, UUID groupId) throws Exception {
+        // Hold-debit from source
+        mockMvc.perform(post("/api/v1/ledger/wallets/{walletId}/hold-debit", fromWalletId)
+                        .param("amount", String.valueOf(amount))
+                        .param("referenceId", groupId.toString()))
+                .andExpect(status().isCreated());
+
+        // Hold-credit to target
+        mockMvc.perform(post("/api/v1/ledger/wallets/{walletId}/hold-credit", toWalletId)
+                        .param("amount", String.valueOf(amount))
+                        .param("referenceId", groupId.toString()))
+                .andExpect(status().isCreated());
+
+        // Settle the group
+        mockMvc.perform(post("/api/v1/ledger/groups/{referenceId}/settle", groupId))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * Helper method to get ESCROW wallet ID.
+     *
+     * <p>ESCROW wallet is created automatically by the system on first access.
+     *
+     * <p><b>Note:</b> Direct service access is acceptable in test helpers
+     * as there is no public API endpoint to get system wallet IDs.
+     *
+     * @return ESCROW wallet ID
+     */
+    protected Integer getEscrowWalletId() {
+        return walletManagementService.getOrCreateEscrowWallet();
     }
 }

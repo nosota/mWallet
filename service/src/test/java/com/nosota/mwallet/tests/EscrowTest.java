@@ -32,53 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @DisplayName("Escrow Tests")
 public class EscrowTest extends TestBase {
-
-    /**
-     * Helper method to get ESCROW wallet ID.
-     * ESCROW wallet is created automatically by the system.
-     */
-    private Integer getEscrowWalletId() {
-        return walletManagementService.getOrCreateEscrowWallet();
-    }
-
-    /**
-     * Helper method to create a transaction group via API.
-     */
-    private UUID createTransactionGroup() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/ledger/groups"))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        TransactionGroupResponse response = objectMapper.readValue(json, TransactionGroupResponse.class);
-        return response.referenceId();
-    }
-
-    /**
-     * Helper method to perform hold-debit + hold-credit + settle as a single operation.
-     *
-     * @param fromWalletId Source wallet
-     * @param toWalletId Target wallet
-     * @param amount Amount to transfer
-     * @param groupId Transaction group ID
-     */
-    private void holdAndSettle(Integer fromWalletId, Integer toWalletId, Long amount, UUID groupId) throws Exception {
-        // Hold-debit from source
-        mockMvc.perform(post("/api/v1/ledger/wallets/{walletId}/hold-debit", fromWalletId)
-                        .param("amount", String.valueOf(amount))
-                        .param("referenceId", groupId.toString()))
-                .andExpect(status().isCreated());
-
-        // Hold-credit to target
-        mockMvc.perform(post("/api/v1/ledger/wallets/{walletId}/hold-credit", toWalletId)
-                        .param("amount", String.valueOf(amount))
-                        .param("referenceId", groupId.toString()))
-                .andExpect(status().isCreated());
-
-        // Settle the group
-        mockMvc.perform(post("/api/v1/ledger/groups/{referenceId}/settle", groupId))
-                .andExpect(status().isOk());
-    }
+    // Note: Helper methods (createTransactionGroup, holdAndSettle, getEscrowWalletId)
+    // are inherited from TestBase and reusable across all test classes
 
     @Test
     @DisplayName("ESC-001: Полный цикл Escrow (BUYER → ESCROW → MERCHANT)")
