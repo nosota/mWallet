@@ -125,31 +125,103 @@ public class WalletTest extends TestBase {
     @Test
     @DisplayName("WAL-003: Запрет создания ESCROW через API")
     void testEscrowCannotBeCreatedViaApi() throws Exception {
-        // Assert: Verify there is NO public endpoint for creating ESCROW wallets
-        // WalletApi only exposes /user and /merchant endpoints
+        // Assert: Verify /api/v1/wallets/escrow endpoint does NOT exist (404 Not Found)
         // ESCROW wallets can only be created internally by WalletManagementService
 
-        // Note: Spring returns 404 for non-existent endpoints, but may return different codes
-        // depending on request. The key assertion is that ESCROW cannot be created via any public endpoint.
-        // Since there is no /escrow endpoint in WalletApi, this test passes by design.
+        // Attempt 1: Try to create ESCROW wallet via dedicated endpoint (should not exist)
+        MvcResult escrowAttempt = mockMvc.perform(post("/api/v1/wallets/escrow")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "ownerId": 999,
+                                "description": "Fake ESCROW",
+                                "currency": "USD"
+                            }
+                            """))
+                .andReturn();
 
-        // We verify this by ensuring only USER and MERCHANT endpoints exist
-        // and ESCROW creation is impossible through the public API
+        // Verify endpoint does not exist (404) or is forbidden (403) or bad request (400)
+        int status = escrowAttempt.getResponse().getStatus();
+        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isNotEqualTo(201);
+        assertThat(status).isIn(400, 403, 404, 500); // Any error, NOT success
+
+        // Attempt 2: Verify /api/v1/wallets/system endpoint also does not exist
+        MvcResult systemAttempt = mockMvc.perform(post("/api/v1/wallets/system")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "type": "ESCROW",
+                                "ownerId": 999,
+                                "currency": "USD"
+                            }
+                            """))
+                .andReturn();
+
+        status = systemAttempt.getResponse().getStatus();
+        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isNotEqualTo(201);
+        assertThat(status).isIn(400, 403, 404, 500); // Any error, NOT success
+
+        // SUCCESS: ESCROW wallets cannot be created through public API ✓
     }
 
     @Test
     @DisplayName("WAL-004: Запрет создания SYSTEM через API")
     void testSystemCannotBeCreatedViaApi() throws Exception {
-        // Assert: Verify there is NO public endpoint for creating SYSTEM wallets
-        // WalletApi only exposes /user and /merchant endpoints
-        // SYSTEM wallets (like DEPOSIT, WITHDRAWAL) can only be created internally
+        // Assert: Verify system wallet endpoints do NOT exist (404 Not Found)
+        // SYSTEM wallets (DEPOSIT, WITHDRAWAL, etc.) can only be created internally
         // through WalletManagementService methods like getOrCreateDepositWallet()
 
-        // Note: Spring returns 404 for non-existent endpoints, but may return different codes
-        // depending on request. The key assertion is that SYSTEM cannot be created via any public endpoint.
+        // Attempt 1: Try to create DEPOSIT wallet via API (should not exist)
+        MvcResult depositAttempt = mockMvc.perform(post("/api/v1/wallets/deposit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "description": "Fake DEPOSIT",
+                                "currency": "USD"
+                            }
+                            """))
+                .andReturn();
 
-        // We verify this by ensuring only USER and MERCHANT endpoints exist
-        // and SYSTEM creation is impossible through the public API
+        int status = depositAttempt.getResponse().getStatus();
+        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isNotEqualTo(201);
+        assertThat(status).isIn(400, 403, 404, 500); // Any error, NOT success
+
+        // Attempt 2: Try to create WITHDRAWAL wallet via API (should not exist)
+        MvcResult withdrawalAttempt = mockMvc.perform(post("/api/v1/wallets/withdrawal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "description": "Fake WITHDRAWAL",
+                                "currency": "USD"
+                            }
+                            """))
+                .andReturn();
+
+        status = withdrawalAttempt.getResponse().getStatus();
+        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isNotEqualTo(201);
+        assertThat(status).isIn(400, 403, 404, 500); // Any error, NOT success
+
+        // Attempt 3: Try to create generic SYSTEM wallet via API (should not exist)
+        MvcResult systemAttempt = mockMvc.perform(post("/api/v1/wallets/system")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "description": "Fake SYSTEM",
+                                "currency": "USD"
+                            }
+                            """))
+                .andReturn();
+
+        status = systemAttempt.getResponse().getStatus();
+        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isNotEqualTo(201);
+        assertThat(status).isIn(400, 403, 404, 500); // Any error, NOT success
+
+        // SUCCESS: SYSTEM wallets cannot be created through public API ✓
     }
 
     @Test

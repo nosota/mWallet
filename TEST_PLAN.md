@@ -91,7 +91,7 @@
 |-----|----------|-------------|
 | USD | US Dollar | cents (1/100) |
 | EUR | Euro | cents (1/100) |
-| USDT | Tether | cents (1/100) |
+| GBP | British Pound | pence (1/100) |
 
 ### 2.4 Формат сумм
 
@@ -278,7 +278,7 @@
 |-----|----------|-----------|
 | 1 | Create wallet(currency=USD) | Wallet USD created |
 | 2 | Create wallet(currency=EUR) | Wallet EUR created |
-| 3 | Create wallet(currency=USDT) | Wallet USDT created |
+| 3 | Create wallet(currency=GBP) | Wallet GBP created |
 
 **Проверки:**
 - [ ] Созданы 3 кошелька с разными валютами
