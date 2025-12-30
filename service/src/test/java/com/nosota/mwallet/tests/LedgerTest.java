@@ -146,27 +146,25 @@ public class LedgerTest extends TestBase {
 
         Integer firstTransactionId = transactions.get(0).getId();
 
-        // Assert 1: Verify PUT endpoint does not exist (should NOT succeed with 2xx status)
+        // Assert 1: Verify PUT endpoint does not exist (404), method not allowed (405), or error (500)
+        // Note: Spring Boot 3.x may return 500 for non-existent endpoints
         MvcResult putResult = mockMvc.perform(put("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\": 99999}"))
                 .andReturn();
-        assertThat(putResult.getResponse().getStatus()).isNotEqualTo(200);
-        assertThat(putResult.getResponse().getStatus()).isNotEqualTo(201);
+        assertThat(putResult.getResponse().getStatus()).isIn(404, 405, 500);
 
-        // Assert 2: Verify PATCH endpoint does not exist (should NOT succeed with 2xx status)
+        // Assert 2: Verify PATCH endpoint does not exist (404), method not allowed (405), or error (500)
         MvcResult patchResult = mockMvc.perform(patch("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\": \"CANCELLED\"}"))
                 .andReturn();
-        assertThat(patchResult.getResponse().getStatus()).isNotEqualTo(200);
-        assertThat(patchResult.getResponse().getStatus()).isNotEqualTo(201);
+        assertThat(patchResult.getResponse().getStatus()).isIn(404, 405, 500);
 
-        // Assert 3: Verify DELETE endpoint does not exist (should NOT succeed with 2xx status)
+        // Assert 3: Verify DELETE endpoint does not exist (404), method not allowed (405), or error (500)
         MvcResult deleteResult = mockMvc.perform(delete("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId))
                 .andReturn();
-        assertThat(deleteResult.getResponse().getStatus()).isNotEqualTo(200);
-        assertThat(deleteResult.getResponse().getStatus()).isNotEqualTo(204);
+        assertThat(deleteResult.getResponse().getStatus()).isIn(404, 405, 500);
 
         // Assert 4: Verify transaction still exists with original data (immutability)
         MvcResult verifyResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
@@ -281,20 +279,20 @@ public class LedgerTest extends TestBase {
                 objectMapper.getTypeFactory().constructCollectionType(List.class, TransactionDTO.class)
         );
 
-        // Assert: Original HOLD transactions still exist
+        // Assert: Original HOLD transactions still exist (2 transactions: BUYER + ESCROW)
         long holdCount = cancelTransactions.stream()
                 .filter(t -> t.getStatus() == TransactionStatus.HOLD)
                 .count();
-        assertThat(holdCount).isGreaterThanOrEqualTo(1);
+        assertThat(holdCount).isEqualTo(2); // BUYER DEBIT + ESCROW CREDIT
 
-        // Assert: New CANCELLED transactions created
+        // Assert: New CANCELLED transactions created (2 reversal transactions)
         long cancelledCount = cancelTransactions.stream()
                 .filter(t -> t.getStatus() == TransactionStatus.CANCELLED)
                 .count();
-        assertThat(cancelledCount).isGreaterThanOrEqualTo(1);
+        assertThat(cancelledCount).isEqualTo(2); // BUYER CREDIT + ESCROW DEBIT
 
-        // Assert: Total transactions increased (reversal pattern)
-        assertThat(cancelTransactions.size()).isGreaterThan(transactionsAfterHold);
+        // Assert: Total should be 4 transactions (2 HOLD + 2 CANCELLED)
+        assertThat(cancelTransactions.size()).isEqualTo(4);
 
         // Assert: Zero-sum maintained
         long totalSum = cancelTransactions.stream()
@@ -323,9 +321,14 @@ public class LedgerTest extends TestBase {
         // 2. CREDIT to buyer wallet (+100,000) - money received
         // This ensures zero-sum: DEPOSIT=-100,000, BUYER=+100,000, Total=0
         //
-        // Note: We verify this indirectly through reconciliation and zero-sum checks,
-        // as there's no API endpoint to query transactions by wallet ID.
-        // The DEPOSIT wallet behavior is tested through the overall system reconciliation.
+        // Note: We verify DEPOSIT wallet behavior indirectly through reconciliation:
+        // - No API endpoint exists to get system wallet IDs (DEPOSIT, WITHDRAWAL, etc.)
+        // - No API endpoint exists to query transactions by wallet ID
+        // - System reconciliation (totalSum = 0) proves DEPOSIT transactions are correct
+        // - If DEPOSIT wallet had incorrect balance, reconciliation would fail
+        //
+        // Expected DEPOSIT balance after all operations:
+        // -100,000 (BUYER_1) + -50,000 (BUYER_2) = -150,000 (negative = money from external world)
 
         // Operation 2: Transfer (BUYER_1 → MERCHANT_1: 25,000)
         Integer merchant1WalletId = createMerchantWallet("MERCHANT_1");
