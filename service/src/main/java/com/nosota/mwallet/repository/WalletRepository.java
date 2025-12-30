@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WalletRepository extends JpaRepository<Wallet, Integer> {
@@ -55,4 +56,14 @@ public interface WalletRepository extends JpaRepository<Wallet, Integer> {
      * @return List of wallets
      */
     List<Wallet> findByOwnerIdAndType(Long ownerId, WalletType type);
+
+    /**
+     * Finds a wallet by type and description.
+     * Used for finding system wallets like DEPOSIT, WITHDRAWAL.
+     *
+     * @param type        The wallet type (typically SYSTEM)
+     * @param description The wallet description
+     * @return Optional containing the wallet if found
+     */
+    Optional<Wallet> findByTypeAndDescription(WalletType type, String description);
 }

@@ -127,4 +127,19 @@ public class LedgerController implements LedgerApi {
         List<TransactionDTO> transactions = transactionService.getTransactionsByReferenceId(referenceId);
         return ResponseEntity.ok(transactions);
     }
+
+    @Override
+    public ResponseEntity<ReconciliationResponse> getReconciliation() {
+        java.util.Map<String, Long> stats = transactionService.getReconciliation();
+        ReconciliationResponse response = new ReconciliationResponse(
+                stats.get("totalSum"),
+                stats.get("settledSum"),
+                stats.get("holdSum"),
+                stats.get("releasedSum"),
+                stats.get("cancelledSum"),
+                stats.get("refundedSum"),
+                stats
+        );
+        return ResponseEntity.ok(response);
+    }
 }

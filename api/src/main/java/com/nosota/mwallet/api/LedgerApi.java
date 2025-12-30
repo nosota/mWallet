@@ -194,4 +194,13 @@ public interface LedgerApi {
     @GetMapping("/groups/{referenceId}/transactions")
     ResponseEntity<List<TransactionDTO>> getGroupTransactions(
             @PathVariable("referenceId") UUID referenceId);
+
+    /**
+     * Gets reconciliation statistics for zero-sum validation.
+     * Returns sum of all transactions by status to verify system integrity.
+     *
+     * @return Reconciliation statistics
+     */
+    @GetMapping("/reconciliation")
+    ResponseEntity<ReconciliationResponse> getReconciliation();
 }

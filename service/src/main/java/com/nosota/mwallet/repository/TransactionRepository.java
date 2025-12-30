@@ -129,4 +129,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
      */
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.referenceId = :groupId AND t.status = 'HOLD'")
     Long getReconciliationAmountByGroupId(@Param("groupId") UUID groupId);
+
+    /**
+     * Calculates the total sum of all transactions in the system.
+     * According to double-entry accounting, this must always equal 0.
+     *
+     * @return Total sum of all transactions (should be 0)
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t")
+    Long getTotalSum();
+
+    /**
+     * Calculates the sum of transactions by status.
+     *
+     * @param status Transaction status to filter by
+     * @return Sum of transactions with the given status
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.status = :status")
+    Long getSumByStatus(@Param("status") TransactionStatus status);
 }

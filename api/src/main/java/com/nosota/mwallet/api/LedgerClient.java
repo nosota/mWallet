@@ -222,4 +222,15 @@ public class LedgerClient implements LedgerApi {
                 .toEntity(new ParameterizedTypeReference<List<TransactionDTO>>() {})
                 .block();
     }
+
+    @Override
+    public ResponseEntity<ReconciliationResponse> getReconciliation() {
+        log.debug("Calling getReconciliation");
+
+        return webClient.get()
+                .uri("/api/v1/ledger/reconciliation")
+                .retrieve()
+                .toEntity(ReconciliationResponse.class)
+                .block();
+    }
 }

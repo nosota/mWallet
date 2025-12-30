@@ -13,9 +13,11 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Validated
@@ -23,10 +25,9 @@ import java.time.LocalDateTime;
 @Slf4j
 public class WalletManagementService {
     private final WalletRepository walletRepository;
-
     private final TransactionRepository transactionRepository;
-
     private final TransactionGroupRepository transactionGroupRepository;
+    private final TransactionService transactionService;
 
     /**
      * Creates a new wallet of the specified type and persists it to the database.
@@ -72,8 +73,17 @@ public class WalletManagementService {
      * <p>
      * This method initializes a new {@link Wallet} instance with the provided type, owner information, and initial balance.
      * It then saves the wallet using the {@link WalletRepository} and returns the generated ID of the
-     * newly created wallet. The initial balance is accounted for as a transaction entry to ensure consistency
-     * with the transaction history.
+     * newly created wallet.
+     * </p>
+     * <p>
+     * <b>IMPORTANT:</b> Initial balance is deposited using proper double-entry bookkeeping:
+     * - Transaction 1: DEBIT from DEPOSIT system wallet (goes negative, representing external money)
+     * - Transaction 2: CREDIT to new wallet (receives the balance)
+     * - Total: 0 (zero-sum principle maintained)
+     * </p>
+     * <p>
+     * The DEPOSIT wallet represents the external world (banks, payment processors).
+     * Its negative balance shows how much real money should be in correspondent accounts.
      * </p>
      * <p>
      * Ownership rules (enforced by database constraints in V2.04):
@@ -109,23 +119,42 @@ public class WalletManagementService {
         newWallet = walletRepository.save(newWallet);
 
         if (initialBalance > 0) {
-            // Create an initial transaction for the wallet.
-            Transaction initialTransaction = new Transaction();
-            initialTransaction.setAmount(initialBalance);
-            initialTransaction.setWalletId(newWallet.getId());
-            initialTransaction.setStatus(TransactionStatus.SETTLED);
-            initialTransaction.setType(TransactionType.CREDIT); // assuming it's a credit transaction for the initial balance
-            initialTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
-            initialTransaction.setDescription("New wallet with initial balance");
-            initialTransaction.setCurrency(newWallet.getCurrency());
+            // Use proper double-entry bookkeeping: create offsetting transactions manually
+            // This ensures zero-sum: DEPOSIT=-initialBalance, newWallet=+initialBalance, Total=0
+            Integer depositWalletId = getOrCreateDepositWallet();
 
-            // Generate a reference ID for the initial transaction.
+            // Create transaction group
             TransactionGroup transactionGroup = new TransactionGroup();
             transactionGroup.setStatus(TransactionGroupStatus.SETTLED);
             transactionGroup = transactionGroupRepository.save(transactionGroup);
-            initialTransaction.setReferenceId(transactionGroup.getId());
+            UUID referenceId = transactionGroup.getId();
 
-            transactionRepository.save(initialTransaction);
+            // Transaction 1: DEBIT from DEPOSIT wallet (negative, representing money from external world)
+            Transaction debitTransaction = new Transaction();
+            debitTransaction.setWalletId(depositWalletId);
+            debitTransaction.setAmount(-initialBalance);  // NEGATIVE
+            debitTransaction.setType(TransactionType.DEBIT);
+            debitTransaction.setStatus(TransactionStatus.SETTLED);
+            debitTransaction.setReferenceId(referenceId);
+            debitTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+            debitTransaction.setDescription("Deposit from external world");
+            debitTransaction.setCurrency(newWallet.getCurrency());
+            transactionRepository.save(debitTransaction);
+
+            // Transaction 2: CREDIT to new wallet (positive, receiving balance)
+            Transaction creditTransaction = new Transaction();
+            creditTransaction.setWalletId(newWallet.getId());
+            creditTransaction.setAmount(initialBalance);  // POSITIVE
+            creditTransaction.setType(TransactionType.CREDIT);
+            creditTransaction.setStatus(TransactionStatus.SETTLED);
+            creditTransaction.setReferenceId(referenceId);
+            creditTransaction.setConfirmRejectTimestamp(LocalDateTime.now());
+            creditTransaction.setDescription("Initial balance deposit");
+            creditTransaction.setCurrency(newWallet.getCurrency());
+            transactionRepository.save(creditTransaction);
+
+            log.info("Deposited {} to new wallet {} from DEPOSIT wallet {} (referenceId={})",
+                    initialBalance, newWallet.getId(), depositWalletId, referenceId);
         }
 
         return newWallet.getId();
@@ -183,6 +212,59 @@ public class WalletManagementService {
     @Transactional
     public Integer createSystemWalletWithBalance(String description, @PositiveOrZero Long initialBalance) {
         return createNewWalletWithBalance(WalletType.SYSTEM, description, initialBalance, null, OwnerType.SYSTEM_OWNER);
+    }
+
+    /**
+     * Gets or creates the DEPOSIT system wallet (on-demand creation).
+     * <p>
+     * The DEPOSIT wallet represents the external world (banks, payment processors).
+     * It goes NEGATIVE when deposits occur (money came from outside).
+     * The negative balance shows how much real money should be in correspondent accounts.
+     * </p>
+     * <p>
+     * This ensures zero-sum principle:
+     * - Deposit 100,000 to USER: DEPOSIT=-100,000, USER=+100,000, Total=0 ✓
+     * </p>
+     * <p>
+     * <b>IMPORTANT:</b> Uses REQUIRES_NEW propagation to ensure the DEPOSIT wallet
+     * is committed in a separate transaction before being used.
+     * </p>
+     *
+     * @return The ID of the DEPOSIT system wallet
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Integer getOrCreateDepositWallet() {
+        // Try to find existing DEPOSIT wallet with description "DEPOSIT"
+        return walletRepository.findByTypeAndDescription(WalletType.SYSTEM, "DEPOSIT")
+                .map(Wallet::getId)
+                .orElseGet(() -> {
+                    log.info("Creating DEPOSIT system wallet");
+                    return createSystemWallet("DEPOSIT");
+                });
+    }
+
+    /**
+     * Gets or creates the WITHDRAWAL system wallet (on-demand creation).
+     * <p>
+     * The WITHDRAWAL wallet represents money leaving the system to external world.
+     * It goes POSITIVE when withdrawals occur (money left to outside).
+     * </p>
+     * <p>
+     * <b>IMPORTANT:</b> Uses REQUIRES_NEW propagation to ensure the WITHDRAWAL wallet
+     * is committed in a separate transaction before being used.
+     * </p>
+     *
+     * @return The ID of the WITHDRAWAL system wallet
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Integer getOrCreateWithdrawalWallet() {
+        // Try to find existing WITHDRAWAL wallet with description "WITHDRAWAL"
+        return walletRepository.findByTypeAndDescription(WalletType.SYSTEM, "WITHDRAWAL")
+                .map(Wallet::getId)
+                .orElseGet(() -> {
+                    log.info("Creating WITHDRAWAL system wallet");
+                    return createSystemWallet("WITHDRAWAL");
+                });
     }
 
     /**

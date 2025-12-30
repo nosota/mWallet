@@ -8,6 +8,7 @@ import com.nosota.mwallet.error.TransactionNotFoundException;
 import com.nosota.mwallet.model.Transaction;
 import com.nosota.mwallet.model.TransactionGroup;
 import com.nosota.mwallet.api.model.TransactionGroupStatus;
+import com.nosota.mwallet.api.model.TransactionStatus;
 import com.nosota.mwallet.repository.TransactionGroupRepository;
 import com.nosota.mwallet.repository.TransactionRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -345,5 +346,36 @@ public class TransactionService {
     public List<TransactionDTO> getTransactionsByReferenceId(@NotNull UUID referenceId) {
         List<Transaction> transactions = transactionRepository.findByReferenceId(referenceId);
         return TransactionMapper.INSTANCE.toDTOList(transactions);
+    }
+
+    /**
+     * Gets reconciliation statistics for zero-sum validation.
+     *
+     * <p>According to double-entry accounting, the sum of all transactions
+     * in the system must always equal 0. This method provides statistics
+     * to verify system integrity.
+     *
+     * @return Map with reconciliation statistics by status
+     */
+    public java.util.Map<String, Long> getReconciliation() {
+        Long totalSum = transactionRepository.getTotalSum();
+        Long settledSum = transactionRepository.getSumByStatus(TransactionStatus.SETTLED);
+        Long holdSum = transactionRepository.getSumByStatus(TransactionStatus.HOLD);
+        Long releasedSum = transactionRepository.getSumByStatus(TransactionStatus.RELEASED);
+        Long cancelledSum = transactionRepository.getSumByStatus(TransactionStatus.CANCELLED);
+        Long refundedSum = transactionRepository.getSumByStatus(TransactionStatus.REFUNDED);
+
+        java.util.Map<String, Long> reconciliation = new java.util.HashMap<>();
+        reconciliation.put("totalSum", totalSum);
+        reconciliation.put("settledSum", settledSum);
+        reconciliation.put("holdSum", holdSum);
+        reconciliation.put("releasedSum", releasedSum);
+        reconciliation.put("cancelledSum", cancelledSum);
+        reconciliation.put("refundedSum", refundedSum);
+
+        log.info("Reconciliation check: total={}, settled={}, hold={}, released={}, cancelled={}, refunded={}",
+                totalSum, settledSum, holdSum, releasedSum, cancelledSum, refundedSum);
+
+        return reconciliation;
     }
 }
