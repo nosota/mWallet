@@ -16,8 +16,11 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -143,10 +146,29 @@ public class LedgerTest extends TestBase {
 
         Integer firstTransactionId = transactions.get(0).getId();
 
-        // Assert: Verify API has no UPDATE/DELETE endpoints for transactions
-        // API design enforces immutability - no PUT/DELETE endpoints exist
+        // Assert 1: Verify PUT endpoint does not exist (should NOT succeed with 2xx status)
+        MvcResult putResult = mockMvc.perform(put("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 99999}"))
+                .andReturn();
+        assertThat(putResult.getResponse().getStatus()).isNotEqualTo(200);
+        assertThat(putResult.getResponse().getStatus()).isNotEqualTo(201);
 
-        // Verify transaction still exists with original data
+        // Assert 2: Verify PATCH endpoint does not exist (should NOT succeed with 2xx status)
+        MvcResult patchResult = mockMvc.perform(patch("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"CANCELLED\"}"))
+                .andReturn();
+        assertThat(patchResult.getResponse().getStatus()).isNotEqualTo(200);
+        assertThat(patchResult.getResponse().getStatus()).isNotEqualTo(201);
+
+        // Assert 3: Verify DELETE endpoint does not exist (should NOT succeed with 2xx status)
+        MvcResult deleteResult = mockMvc.perform(delete("/api/v1/ledger/groups/{referenceId}/transactions/{transactionId}", referenceId, firstTransactionId))
+                .andReturn();
+        assertThat(deleteResult.getResponse().getStatus()).isNotEqualTo(200);
+        assertThat(deleteResult.getResponse().getStatus()).isNotEqualTo(204);
+
+        // Assert 4: Verify transaction still exists with original data (immutability)
         MvcResult verifyResult = mockMvc.perform(get("/api/v1/ledger/groups/{referenceId}/transactions", referenceId))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -205,7 +227,42 @@ public class LedgerTest extends TestBase {
         );
 
         int transactionsAfterHold = holdTransactions.size();
-        assertThat(transactionsAfterHold).isGreaterThanOrEqualTo(1);
+        assertThat(transactionsAfterHold).isGreaterThanOrEqualTo(2); // At least 2: DEBIT from buyer + CREDIT to escrow
+
+        // Assert: Verify ESCROW wallet participation (double-entry bookkeeping)
+        // holdDebit should create 2 transactions:
+        // 1. DEBIT from buyer wallet (-10,000)
+        // 2. CREDIT to ESCROW wallet (+10,000)
+
+        // Find DEBIT transaction from buyer
+        TransactionDTO buyerDebitTx = holdTransactions.stream()
+                .filter(t -> t.getWalletId().equals(buyerWalletId))
+                .filter(t -> t.getType() == TransactionType.DEBIT)
+                .filter(t -> t.getStatus() == TransactionStatus.HOLD)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("DEBIT HOLD transaction not found for BUYER wallet"));
+
+        assertThat(buyerDebitTx.getAmount()).isEqualTo(-10000L);
+
+        // Find CREDIT transaction to ESCROW (walletId will be the ESCROW wallet ID)
+        TransactionDTO escrowCreditTx = holdTransactions.stream()
+                .filter(t -> !t.getWalletId().equals(buyerWalletId)) // Different wallet (ESCROW)
+                .filter(t -> t.getType() == TransactionType.CREDIT)
+                .filter(t -> t.getStatus() == TransactionStatus.HOLD)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("CREDIT HOLD transaction not found for ESCROW wallet"));
+
+        assertThat(escrowCreditTx.getAmount()).isEqualTo(10000L);
+
+        // Verify both transactions have the same referenceId
+        assertThat(buyerDebitTx.getReferenceId()).isEqualTo(escrowCreditTx.getReferenceId());
+
+        // Verify zero-sum for HOLD transactions
+        long holdSum = holdTransactions.stream()
+                .filter(t -> t.getStatus() == TransactionStatus.HOLD)
+                .mapToLong(TransactionDTO::getAmount)
+                .sum();
+        assertThat(holdSum).isEqualTo(0L);
 
         // Step 3: Cancel the hold
         mockMvc.perform(post("/api/v1/ledger/groups/{referenceId}/cancel", groupUuid)
@@ -258,6 +315,17 @@ public class LedgerTest extends TestBase {
 
         // Operation 1: Deposit (BUYER_1 gets 100,000)
         Integer buyer1WalletId = createUserWalletWithBalance("BUYER_1", 100000L);
+
+        // Assert: Verify DEPOSIT wallet participation (initial balance creation)
+        // createUserWalletWithBalance creates initial balance using DEPOSIT wallet.
+        // This should create 2 transactions with proper double-entry bookkeeping:
+        // 1. DEBIT from DEPOSIT system wallet (-100,000) - money from external world
+        // 2. CREDIT to buyer wallet (+100,000) - money received
+        // This ensures zero-sum: DEPOSIT=-100,000, BUYER=+100,000, Total=0
+        //
+        // Note: We verify this indirectly through reconciliation and zero-sum checks,
+        // as there's no API endpoint to query transactions by wallet ID.
+        // The DEPOSIT wallet behavior is tested through the overall system reconciliation.
 
         // Operation 2: Transfer (BUYER_1 → MERCHANT_1: 25,000)
         Integer merchant1WalletId = createMerchantWallet("MERCHANT_1");

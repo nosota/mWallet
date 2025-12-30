@@ -268,6 +268,36 @@ public class WalletManagementService {
     }
 
     /**
+     * Gets or creates the ESCROW wallet (on-demand creation).
+     * <p>
+     * The ESCROW wallet is a temporary holding account for funds during two-phase transactions.
+     * When funds are held (Phase 1), they move from sender to ESCROW.
+     * When settled (Phase 2), they move from ESCROW to recipient.
+     * </p>
+     * <p>
+     * This ensures double-entry bookkeeping at all stages:
+     * - Hold: SENDER=-amount, ESCROW=+amount (zero-sum)
+     * - Settle: ESCROW=-amount, RECIPIENT=+amount (zero-sum)
+     * </p>
+     * <p>
+     * <b>IMPORTANT:</b> Uses REQUIRES_NEW propagation to ensure the ESCROW wallet
+     * is committed in a separate transaction before being used.
+     * </p>
+     *
+     * @return The ID of the ESCROW wallet
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Integer getOrCreateEscrowWallet() {
+        // Try to find existing ESCROW wallet with description "ESCROW"
+        return walletRepository.findByTypeAndDescription(WalletType.ESCROW, "ESCROW")
+                .map(Wallet::getId)
+                .orElseGet(() -> {
+                    log.info("Creating ESCROW wallet");
+                    return createEscrowWallet("ESCROW");
+                });
+    }
+
+    /**
      * Validates wallet ownership parameters.
      * <p>
      * Enforces the following rules:

@@ -48,22 +48,22 @@ public class WalletService {
      * Holds (blocks) a specified amount from the wallet for debit operation.
      *
      * <p>This is Phase 1 of a two-phase transaction. The amount is blocked from the sender's
-     * available balance but not yet transferred. The wallet must have sufficient funds.
+     * available balance and moved to ESCROW. The wallet must have sufficient funds.
      *
-     * <p>Creates a transaction:
+     * <p><b>IMPORTANT:</b> Creates TWO transactions atomically (double-entry bookkeeping):
      * <ul>
-     *   <li>Amount: negative (debit)</li>
-     *   <li>Type: DEBIT</li>
-     *   <li>Status: HOLD</li>
+     *   <li>Transaction 1: DEBIT from buyer wallet: -amount, DEBIT, HOLD</li>
+     *   <li>Transaction 2: CREDIT to ESCROW wallet: +amount, CREDIT, HOLD</li>
+     *   <li>Total: 0 (zero-sum principle maintained)</li>
      * </ul>
      *
-     * <p>Example: Hold $100 from wallet for payment
-     * → Creates transaction: -100, DEBIT, HOLD
+     * <p>Example: Hold $100 from buyer for payment
+     * → Creates: BUYER -100 (DEBIT, HOLD) + ESCROW +100 (CREDIT, HOLD) = 0 ✓
      *
      * @param walletId    The unique identifier of the wallet to debit from
      * @param amount      The amount to hold (must be positive, will be negated internally)
      * @param referenceId UUID grouping related transactions (typically matches transaction group ID)
-     * @return The ID of the created HOLD transaction
+     * @return The ID of the created DEBIT HOLD transaction from buyer wallet
      * @throws WalletNotFoundException    if the wallet does not exist
      * @throws InsufficientFundsException if the wallet has insufficient available balance
      */
@@ -83,44 +83,61 @@ public class WalletService {
                             walletId, availableBalance, amount));
         }
 
-        // Create HOLD transaction (negative amount for debit)
-        Transaction holdTransaction = new Transaction();
-        holdTransaction.setWalletId(wallet.getId());
-        holdTransaction.setAmount(-amount);
-        holdTransaction.setType(TransactionType.DEBIT);
-        holdTransaction.setStatus(TransactionStatus.HOLD);
-        holdTransaction.setReferenceId(referenceId);
-        holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
-        holdTransaction.setCurrency(wallet.getCurrency());
+        // Get ESCROW wallet for holding funds
+        Integer escrowWalletId = getOrCreateEscrowWallet();
 
-        Transaction savedTransaction = transactionRepository.save(holdTransaction);
+        LocalDateTime now = LocalDateTime.now();
 
-        log.info("Held debit: walletId={}, amount={}, currency={}, referenceId={}, transactionId={}",
-                walletId, amount, wallet.getCurrency(), referenceId, savedTransaction.getId());
+        // Transaction 1: DEBIT from buyer wallet (negative amount, money leaving)
+        Transaction debitTransaction = new Transaction();
+        debitTransaction.setWalletId(wallet.getId());
+        debitTransaction.setAmount(-amount);
+        debitTransaction.setType(TransactionType.DEBIT);
+        debitTransaction.setStatus(TransactionStatus.HOLD);
+        debitTransaction.setReferenceId(referenceId);
+        debitTransaction.setHoldReserveTimestamp(now);
+        debitTransaction.setCurrency(wallet.getCurrency());
 
-        return savedTransaction.getId();
+        Transaction savedDebitTransaction = transactionRepository.save(debitTransaction);
+
+        // Transaction 2: CREDIT to ESCROW wallet (positive amount, money arriving)
+        Transaction creditTransaction = new Transaction();
+        creditTransaction.setWalletId(escrowWalletId);
+        creditTransaction.setAmount(amount);
+        creditTransaction.setType(TransactionType.CREDIT);
+        creditTransaction.setStatus(TransactionStatus.HOLD);
+        creditTransaction.setReferenceId(referenceId);
+        creditTransaction.setHoldReserveTimestamp(now);
+        creditTransaction.setCurrency(wallet.getCurrency());
+
+        transactionRepository.save(creditTransaction);
+
+        log.info("Held debit (double-entry): buyerWalletId={}, escrowWalletId={}, amount={}, currency={}, referenceId={}, debitTxId={}",
+                walletId, escrowWalletId, amount, wallet.getCurrency(), referenceId, savedDebitTransaction.getId());
+
+        return savedDebitTransaction.getId();
     }
 
     /**
      * Holds (prepares) a specified amount for the wallet for credit operation.
      *
-     * <p>This is Phase 1 of a two-phase transaction. The amount is prepared for the recipient
-     * but not yet added to their available balance. No balance check is performed (incoming funds).
+     * <p>This is Phase 1 of a two-phase transaction. The amount is moved from ESCROW
+     * to the recipient wallet. No balance check is needed (funds already in ESCROW).
      *
-     * <p>Creates a transaction:
+     * <p><b>IMPORTANT:</b> Creates TWO transactions atomically (double-entry bookkeeping):
      * <ul>
-     *   <li>Amount: positive (credit)</li>
-     *   <li>Type: CREDIT</li>
-     *   <li>Status: HOLD</li>
+     *   <li>Transaction 1: DEBIT from ESCROW wallet: -amount, DEBIT, HOLD</li>
+     *   <li>Transaction 2: CREDIT to recipient wallet: +amount, CREDIT, HOLD</li>
+     *   <li>Total: 0 (zero-sum principle maintained)</li>
      * </ul>
      *
-     * <p>Example: Hold $100 for wallet (incoming payment)
-     * → Creates transaction: +100, CREDIT, HOLD
+     * <p>Example: Hold $100 for recipient (funds from ESCROW)
+     * → Creates: ESCROW -100 (DEBIT, HOLD) + RECIPIENT +100 (CREDIT, HOLD) = 0 ✓
      *
      * @param walletId    The unique identifier of the wallet to credit to
      * @param amount      The amount to hold (must be positive)
      * @param referenceId UUID grouping related transactions (typically matches transaction group ID)
-     * @return The ID of the created HOLD transaction
+     * @return The ID of the created CREDIT HOLD transaction to recipient wallet
      * @throws WalletNotFoundException if the wallet does not exist
      */
     @Transactional
@@ -131,22 +148,39 @@ public class WalletService {
         Wallet wallet = walletRepository.findById(walletId)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet with ID " + walletId + " not found"));
 
-        // Create HOLD transaction (positive amount for credit)
-        Transaction holdTransaction = new Transaction();
-        holdTransaction.setWalletId(walletId);
-        holdTransaction.setAmount(amount);
-        holdTransaction.setType(TransactionType.CREDIT);
-        holdTransaction.setStatus(TransactionStatus.HOLD);
-        holdTransaction.setReferenceId(referenceId);
-        holdTransaction.setHoldReserveTimestamp(LocalDateTime.now());
-        holdTransaction.setCurrency(wallet.getCurrency());
+        // Get ESCROW wallet (funds source)
+        Integer escrowWalletId = getOrCreateEscrowWallet();
 
-        Transaction savedTransaction = transactionRepository.save(holdTransaction);
+        LocalDateTime now = LocalDateTime.now();
 
-        log.info("Held credit: walletId={}, amount={}, currency={}, referenceId={}, transactionId={}",
-                walletId, amount, wallet.getCurrency(), referenceId, savedTransaction.getId());
+        // Transaction 1: DEBIT from ESCROW wallet (negative amount, money leaving)
+        Transaction debitTransaction = new Transaction();
+        debitTransaction.setWalletId(escrowWalletId);
+        debitTransaction.setAmount(-amount);
+        debitTransaction.setType(TransactionType.DEBIT);
+        debitTransaction.setStatus(TransactionStatus.HOLD);
+        debitTransaction.setReferenceId(referenceId);
+        debitTransaction.setHoldReserveTimestamp(now);
+        debitTransaction.setCurrency(wallet.getCurrency());
 
-        return savedTransaction.getId();
+        transactionRepository.save(debitTransaction);
+
+        // Transaction 2: CREDIT to recipient wallet (positive amount, money arriving)
+        Transaction creditTransaction = new Transaction();
+        creditTransaction.setWalletId(walletId);
+        creditTransaction.setAmount(amount);
+        creditTransaction.setType(TransactionType.CREDIT);
+        creditTransaction.setStatus(TransactionStatus.HOLD);
+        creditTransaction.setReferenceId(referenceId);
+        creditTransaction.setHoldReserveTimestamp(now);
+        creditTransaction.setCurrency(wallet.getCurrency());
+
+        Transaction savedCreditTransaction = transactionRepository.save(creditTransaction);
+
+        log.info("Held credit (double-entry): escrowWalletId={}, recipientWalletId={}, amount={}, currency={}, referenceId={}, creditTxId={}",
+                escrowWalletId, walletId, amount, wallet.getCurrency(), referenceId, savedCreditTransaction.getId());
+
+        return savedCreditTransaction.getId();
     }
 
     /**
@@ -430,5 +464,30 @@ public class WalletService {
                 savedMerchantDebit.getId(), savedBuyerCredit.getId());
 
         return referenceId;
+    }
+
+    /**
+     * Gets or creates the ESCROW wallet (on-demand creation).
+     *
+     * <p>The ESCROW wallet is a temporary holding account for funds during two-phase transactions.
+     * When funds are held (Phase 1), they move from sender to ESCROW.
+     * When settled (Phase 2), they move from ESCROW to recipient.
+     *
+     * <p>This helper method avoids circular dependency with WalletManagementService.
+     *
+     * @return The ID of the ESCROW wallet
+     */
+    private Integer getOrCreateEscrowWallet() {
+        return walletRepository.findByTypeAndDescription(com.nosota.mwallet.model.WalletType.ESCROW, "ESCROW")
+                .map(Wallet::getId)
+                .orElseGet(() -> {
+                    log.info("Creating ESCROW wallet");
+                    Wallet escrowWallet = new Wallet();
+                    escrowWallet.setType(com.nosota.mwallet.model.WalletType.ESCROW);
+                    escrowWallet.setDescription("ESCROW");
+                    escrowWallet.setOwnerId(null);
+                    escrowWallet.setOwnerType(com.nosota.mwallet.model.OwnerType.SYSTEM_OWNER);
+                    return walletRepository.save(escrowWallet).getId();
+                });
     }
 }
